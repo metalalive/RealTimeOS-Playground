@@ -35,7 +35,7 @@ static void announceTestRun(unsigned int runNumber)
 int UnityMain(int argc, const char* argv[], void (*runAllTests)(void))
 {
     int result = UnityGetCommandLineOptions(argc, argv);
-    unsigned int r;
+    unsigned int r = 0;
     if (result != 0)
         return result;
 
@@ -153,8 +153,7 @@ void UnityMalloc_StartTest(void)
 void UnityMalloc_EndTest(void)
 {
     malloc_fail_countdown = MALLOC_DONT_FAIL;
-    if (malloc_count != 0)
-    {
+    if (malloc_count != 0) {
         UNITY_TEST_FAIL(Unity.CurrentTestLineNumber, "This test leaks!", UNITY_UNKNOWN);
     }
 }
@@ -261,8 +260,7 @@ void unity_free(void* mem)
 
     overrun = isOverrun(mem);
     release_memory(mem);
-    if (overrun)
-    {
+    if (overrun) {
         UNITY_TEST_FAIL(Unity.CurrentTestLineNumber, "Buffer overrun detected during free()", UNITY_UNKNOWN);
     }
 }
@@ -284,8 +282,7 @@ void* unity_realloc(void* oldMem, size_t size)
     if (oldMem == NULL) return unity_malloc(size);
 
     guard--;
-    if (isOverrun(oldMem))
-    {
+    if (isOverrun(oldMem)) {
         release_memory(oldMem);
         UNITY_TEST_FAIL(Unity.CurrentTestLineNumber, "Buffer overrun detected during realloc()", UNITY_UNKNOWN);
     }
@@ -332,8 +329,7 @@ void UnityPointer_Init(void)
 
 void UnityPointer_Set(void** pointer, void* newValue, UNITY_LINE_TYPE line)
 {
-    if (pointer_index >= UNITY_MAX_POINTERS)
-    {
+    if (pointer_index >= UNITY_MAX_POINTERS) {
         UNITY_TEST_FAIL(line, "Too many pointers set", UNITY_SMALLER_THAN);
     }
     else

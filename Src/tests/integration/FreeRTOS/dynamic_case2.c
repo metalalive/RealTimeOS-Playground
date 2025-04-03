@@ -12,16 +12,10 @@ static volatile TaskHandle_t  pxDynPrAddShrCnt;
 static volatile UBaseType_t   sharedCounter;
 
 
-static void vDynPrChkShrCntHandler(void *pvParams)
-{
-    UBaseType_t  uxTask2OriginPriority = 0; 
+static void vDynPrChkShrCntHandler(void *pvParams) {
     UBaseType_t  expectedVal = 0;
-    TestLogger_t *logger = (TestLogger_t *) pvParams;
-
-    uxTask2OriginPriority = uxTaskPriorityGet( pxDynPrAddShrCnt );
-
-    for(;;)
-    {
+    UBaseType_t  uxTask2OriginPriority = uxTaskPriorityGet( pxDynPrAddShrCnt );
+    for(;;) {
         // resume task 2, at this point of time, 
         // task 2 still has lower priority than this task,
         // therefore this task should NOT be preempted by task 2.
@@ -29,7 +23,7 @@ static void vDynPrChkShrCntHandler(void *pvParams)
         taskENTER_CRITICAL();
         sharedCounter = 0;
         expectedVal = sharedCounter;
-        TEST_ASSERT_EQUAL_UINT32_LOGGER( expectedVal, sharedCounter, logger );
+        TEST_ASSERT_EQUAL_UINT32(expectedVal, sharedCounter);
         taskEXIT_CRITICAL();
 
         // try to increase the priority of task 2 (vDynPrAddShrCntHandler) when scheduler is suspended,
@@ -38,31 +32,27 @@ static void vDynPrChkShrCntHandler(void *pvParams)
         vTaskSuspendAll();
         vTaskPrioritySet( pxDynPrAddShrCnt, (configMAX_PRIORITIES - 1) );
         taskENTER_CRITICAL();
-        TEST_ASSERT_EQUAL_UINT32_LOGGER( expectedVal, sharedCounter, logger );
+        TEST_ASSERT_EQUAL_UINT32(expectedVal, sharedCounter);
         taskEXIT_CRITICAL();
         xTaskResumeAll();
 
         // check if the shared conter was increased.
         // sharedCounter should be greater than expectedVal
         taskENTER_CRITICAL();
-        expectedVal++ ;
-        TEST_ASSERT_EQUAL_UINT32_LOGGER( expectedVal, sharedCounter, logger );
+        expectedVal++;
+        TEST_ASSERT_EQUAL_UINT32( expectedVal, sharedCounter );
         taskEXIT_CRITICAL();
-
         vTaskDelay((TickType_t)50);
         
         // recover task 2's priority
         vTaskSuspendAll();
         vTaskPrioritySet( pxDynPrAddShrCnt, uxTask2OriginPriority );
         xTaskResumeAll();
-    } //// end of outer infinite loop
-} //// end of vDynPrChkShrCntHandler
+    } // end of outer infinite loop
+} // end of vDynPrChkShrCntHandler
 
-
-static void vDynPrAddShrCntHandler(void *pvParams)
-{
-    for(;;)
-    {
+static void vDynPrAddShrCntHandler(void *pvParams) {
+    for(;;) {
         taskENTER_CRITICAL();
         sharedCounter++;
         taskEXIT_CRITICAL();
@@ -73,34 +63,26 @@ static void vDynPrAddShrCntHandler(void *pvParams)
 
 void vStartDynamicPriorityCase2( UBaseType_t uxPriority )
 {
-    const UBaseType_t    taskPriority[NUM_OF_TASKS] = { 
-                                                         (UBaseType_t) ((uxPriority+1) | portPRIVILEGE_BIT),
-                                                         (UBaseType_t) (uxPriority | portPRIVILEGE_BIT),
-                                                      };
+    const UBaseType_t taskPriority[NUM_OF_TASKS] = {
+        (UBaseType_t) ((uxPriority+1) | portPRIVILEGE_BIT),
+        (UBaseType_t) (uxPriority | portPRIVILEGE_BIT),
+    };
     StackType_t     *stackMemSpace[NUM_OF_TASKS] ;
-    TestLogger_t    *tlogger;
     BaseType_t       xState; 
     portSHORT        idx;
-
-    tlogger = xRegisterNewTestLogger( __FILE__ , "dynamic priority control task (case 2)" );
-    // allocate stack memory for each task
     for(idx=0; idx<NUM_OF_TASKS; idx++) {
         stackMemSpace[idx] = (StackType_t *) pvPortMalloc(sizeof(StackType_t) * intgSTACK_SIZE );
     }
     // internally create structure to collect parameters feeding to task creating function
     TaskParameters_t tsk1params = {
-        vDynPrChkShrCntHandler, "DynPrChkShrCnt", intgSTACK_SIZE, (void *) tlogger,
+        vDynPrChkShrCntHandler, "DynPrChkShrCnt", intgSTACK_SIZE, (void *)NULL,
         taskPriority[0], stackMemSpace[0], 
-        // leave MPU regions uninitialized
     }; 
     TaskParameters_t tsk2params = {
         vDynPrAddShrCntHandler, "DynPrAddShrCnt", intgSTACK_SIZE, NULL, 
         taskPriority[1], stackMemSpace[1], 
-        // leave MPU regions uninitialized
-    }; 
-    // default value to xRegions 
-    for(idx=0; idx<portNUM_CONFIGURABLE_REGIONS; idx++)
-    {
+    }; // leave MPU regions uninitialized
+    for(idx=0; idx<portNUM_CONFIGURABLE_REGIONS; idx++) {
         tsk1params.xRegions[idx].pvBaseAddress   = NULL;
         tsk1params.xRegions[idx].ulLengthInBytes = 0;
         tsk1params.xRegions[idx].ulParameters    = 0;
@@ -108,11 +90,8 @@ void vStartDynamicPriorityCase2( UBaseType_t uxPriority )
         tsk2params.xRegions[idx].ulLengthInBytes = 0;
         tsk2params.xRegions[idx].ulParameters    = 0;
     }
-
     xState = xTaskCreateRestricted( (const TaskParameters_t * const)&tsk1params, NULL );
     configASSERT( xState == pdPASS );
     xState = xTaskCreateRestricted( (const TaskParameters_t * const)&tsk2params, &pxDynPrAddShrCnt );
     configASSERT( xState == pdPASS );
 }
-
-

@@ -319,24 +319,18 @@ void vPortPendSVHandler( void )
 } //// end of vPortPendSVHandler
 
 
-
-
 void vPortSetMPUregion ( xMPU_REGION_REGS *xRegion )
 { // write the given xMPUSettings to MPU_MBAR , MPU_RASR 
     MPU->RBAR  = xRegion->RBAR ;
     MPU->RASR  = xRegion->RASR ;
-} //// end of vCopyMPUregionSetupToCheckList
-
+}
 
 void vPortGetMPUregion ( portSHORT regionID, xMPU_REGION_REGS *xRegion )
 {
     MPU->RNR = regionID;
     xRegion->RBAR = MPU->RBAR;
     xRegion->RASR = MPU->RASR;
-} //// end of vCopyMPUregionSetupToCheckList
-
-
-
+}
 
 
 PRIVILEGED_FUNCTION void prvSetupMPU( void ) 
@@ -444,7 +438,7 @@ BaseType_t xPortStartScheduler( void )
     SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_TICKINT_Msk 
                     | SysTick_CTRL_ENABLE_Msk ;
     uxCriticalNesting = 0;
-    // enable FPU, configure to fully access coprocessor 10 & 11
+    // enable FPU, configure to fully access to coprocessor 10 & 11
     SCB->CPACR = SCB_CPACR_CP11_Msk | SCB_CPACR_CP10_Msk ;
     // enable to automatically save floating-point context
     FPU->FPCCR |= FPU_FPCCR_LSPEN_Msk;

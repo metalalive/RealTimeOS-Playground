@@ -32,8 +32,7 @@ extern void TEST_HELPER_vPortEnterCritical_sysTickEntry( void );
 extern void TEST_HELPER_vPortSysTickHandler_SysTickEntry( void );
 extern void TEST_HELPER_vPortSysTickHandler_PendSVentry( void );
 // from port.c
-extern void vPortGetMPUregion ( portSHORT regionID, xMPU_SETTINGS *xMPUSettings );
-
+extern void vPortGetMPUregion(portSHORT regionID, xMPU_REGION_REGS *);
 
 // the fake current task TCB below is used only in unit test
 volatile void *pxCurrentTCB;
@@ -196,7 +195,7 @@ void vCopyMPUregionSetupToCheckList( xMPU_SETTINGS *xMPUSettings )
     // copy MPU_MBAR , MPU_RASR for the region #4 - #7
     portSHORT  idx = 0;
     for(idx=0 ; idx<(portNUM_CONFIGURABLE_REGIONS + 1); idx++) {
-        vPortGetMPUregion((4 + idx), &(xMPUSettings->xRegion[idx]) );
+        vPortGetMPUregion((4 + idx), &xMPUSettings->xRegion[idx]);
     }
 } //// end of vCopyMPUregionSetupToCheckList
 

@@ -418,10 +418,19 @@ BaseType_t  xPortIsInsideInterrupt( void );
 #define portTASK_FUNCTION( vFunction, pvParameters ) void vFunction( void *pvParameters )
 
 
+/* USER CODE BEGIN */
+#if( configGENERATE_RUN_TIME_STATS == 1 )
 
+void vCfgTimerForRuntimeStats(void);
+unsigned long ulGetRuntimeCounterVal(void);
+
+#define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS  vCfgTimerForRuntimeStats
+#define portGET_RUN_TIME_COUNTER_VALUE          ulGetRuntimeCounterVal    
+
+#endif // end of configGENERATE_RUN_TIME_STATS
+/* USER CODE END */
 
 #ifdef __cplusplus
 }
 #endif // end of extern "C" { ... }
-
 #endif // end of PORTMACRO_H

@@ -13,60 +13,51 @@ typedef struct {
     SemaphoreHandle_t     xSemphr; 
     // the blocking time can be applied to Queue send/receive operations, or task delay functions
     TickType_t            xBlockTime;
-    // for logging assertion failure
-    TestLogger_t         *logger; 
 } smphrParamStruct;
-
 
 
 static void vDecrSemphrCountToZero(smphrParamStruct *lclsemParams, UBaseType_t  *currentCountValue)
 {
     SemaphoreHandle_t     xSemphr     = lclsemParams->xSemphr ; 
     TickType_t            xBlockTime  = lclsemParams->xBlockTime ;
-    TestLogger_t         *logger      = lclsemParams->logger;
 
     BaseType_t            semOpsStatus;
     portSHORT             idx;
 
     // intially, the semaphore shouldn't be able to be given.
     semOpsStatus = xSemaphoreGive( xSemphr );
-    TEST_ASSERT_NOT_EQUAL_LOGGER( pdPASS, semOpsStatus, logger );
+    TEST_ASSERT_NOT_EQUAL( pdPASS, semOpsStatus );
     // continuously takes the semaphore until the count value reaches zero
     for(idx=0; idx<SMPH_CNT_MAX_LENGTH; idx++)
     {
-        TEST_ASSERT_EQUAL_UINT32_LOGGER( (SMPH_CNT_MAX_LENGTH - idx), uxSemaphoreGetCount(xSemphr), logger );
+        TEST_ASSERT_EQUAL_UINT32( (SMPH_CNT_MAX_LENGTH - idx), uxSemaphoreGetCount(xSemphr) );
         semOpsStatus = xSemaphoreTake( xSemphr, xBlockTime );
-        TEST_ASSERT_EQUAL_INT32_LOGGER( pdPASS, semOpsStatus, logger );
+        TEST_ASSERT_EQUAL_INT32( pdPASS, semOpsStatus );
     }
     *currentCountValue = uxSemaphoreGetCount( xSemphr );
 } //// end of vDecrSemphrCountToZero()
-
-
 
 
 static void vIncrSemphrCountToMax(smphrParamStruct *lclsemParams, UBaseType_t  *currentCountValue)
 {
     SemaphoreHandle_t     xSemphr     = lclsemParams->xSemphr ; 
     TickType_t            xBlockTime  = lclsemParams->xBlockTime ;
-    TestLogger_t         *logger      = lclsemParams->logger;
 
     BaseType_t            semOpsStatus;
     portSHORT             idx;
 
     // intially, the semaphore shouldn't be able to be taken.
     semOpsStatus = xSemaphoreTake( xSemphr, xBlockTime );
-    TEST_ASSERT_NOT_EQUAL_LOGGER( pdPASS, semOpsStatus, logger );
+    TEST_ASSERT_NOT_EQUAL( pdPASS, semOpsStatus );
     // continuously gives the semaphore until the count value reaches its defined maximum
     for(idx=0; idx<SMPH_CNT_MAX_LENGTH; idx++)
     {
-        TEST_ASSERT_EQUAL_UINT32_LOGGER( idx, uxSemaphoreGetCount(xSemphr), logger );
+        TEST_ASSERT_EQUAL_UINT32( idx, uxSemaphoreGetCount(xSemphr) );
         semOpsStatus = xSemaphoreGive( xSemphr );
-        TEST_ASSERT_EQUAL_INT32_LOGGER( pdPASS, semOpsStatus, logger );
+        TEST_ASSERT_EQUAL_INT32( pdPASS, semOpsStatus );
     }
     *currentCountValue = uxSemaphoreGetCount( xSemphr );
 } //// end of vIncrSemphrCountToMax
-
-
 
 
 static void vCntSmphrTestTsk(void *pvParams)
@@ -78,7 +69,6 @@ static void vCntSmphrTestTsk(void *pvParams)
     if(currentCountValue == SMPH_CNT_MAX_LENGTH) {
         vDecrSemphrCountToZero( lclsemParams, &currentCountValue );
     }
-
     for(;;)
     {
         vIncrSemphrCountToMax(  lclsemParams, &currentCountValue );
@@ -88,14 +78,12 @@ static void vCntSmphrTestTsk(void *pvParams)
 } //// end of vCntSmphrTestTsk()
 
 
-
-
 void vStartCountSemphrTest( UBaseType_t uxPriority )
 {
     // collect parameters to the following structure that can be accessed by tasks
-    volatile smphrParamStruct *semParams[NUM_OF_TASKS];
-    StackType_t        *stackMemSpace[NUM_OF_TASKS] ;
-    BaseType_t          xState; 
+    volatile smphrParamStruct *semParams[NUM_OF_TASKS] = {0};
+    StackType_t *stackMemSpace[NUM_OF_TASKS] = {0};
+    BaseType_t   xState; 
     unsigned portSHORT  idx;
 
     for (idx=0; idx<NUM_OF_TASKS; idx++) {
@@ -111,10 +99,6 @@ void vStartCountSemphrTest( UBaseType_t uxPriority )
     configASSERT( semParams[1]->xSemphr );
     semParams[0]->xBlockTime = 0;
     semParams[1]->xBlockTime = 0;
-    semParams[0]->logger     = xRegisterNewTestLogger( __FILE__ , "Counting semaphore test -- task 1");
-    semParams[1]->logger     = xRegisterNewTestLogger( __FILE__ , "Counting semaphore test -- task 2");
-    configASSERT( semParams[0]->logger );
-    configASSERT( semParams[1]->logger );
 
     TaskParameters_t tsk1params = {
         vCntSmphrTestTsk, "CSemTstTsk1", intgSTACK_SIZE, (void *)semParams[0],
@@ -140,6 +124,4 @@ void vStartCountSemphrTest( UBaseType_t uxPriority )
     configASSERT( xState == pdPASS );
     xState = xTaskCreateRestricted( (const TaskParameters_t * const)&tsk2params, NULL );
     configASSERT( xState == pdPASS );
-
 } //// end of vStartCountSemphrTest
-

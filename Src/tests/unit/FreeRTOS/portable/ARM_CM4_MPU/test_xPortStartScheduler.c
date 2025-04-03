@@ -29,7 +29,8 @@ static unsigned portCHAR ucVisitSVC0Flag;
 // from port.c
 extern unsigned portCHAR   ucGetMaxInNvicIPRx( void );
 extern unsigned portSHORT  ucGetMaxPriGroupInAIRCR( void );
-
+extern void vPortGetMPUregion(portSHORT, xMPU_REGION_REGS *);
+extern void vPortSetMPUregion(xMPU_REGION_REGS *);
 
 
 void TEST_HELPER_xPortStartScheduler_SVC0entry( void )
@@ -38,8 +39,6 @@ void TEST_HELPER_xPortStartScheduler_SVC0entry( void )
         ucVisitSVC0Flag = 1;
     }
 } //// end of TEST_HELPER_xPortStartScheduler_SVC0entry
-
-
 
 
 void TEST_HELPER_xPortStartScheduler_memMgtFaultEntry( void )
@@ -81,14 +80,12 @@ void TEST_HELPER_xPortStartScheduler_memMgtFaultEntry( void )
 } //// end of TEST_HELPER_xPortStartScheduler_memMgtFaultEntry
 
 
-
 void TEST_HELPER_xPortStartScheduler_SysTickHandleEntry( void )
 {
     if( expected_value != NULL ) {
         uMockTickCount++;
     }
 } //// end of TEST_HELPER_xPortStartScheduler_SysTickHandleEntry
-
 
 
 PRIVILEGED_FUNCTION static void prvUpdateMPUcheckList (xMPU_SETTINGS *target)
@@ -129,10 +126,6 @@ PRIVILEGED_FUNCTION static void prvUpdateMPUcheckList (xMPU_SETTINGS *target)
 } //// end of prvUpdateMPUcheckList
 
 
-
-
-
-
 // for testing purpose, we copy attributes from region #2 to region #6
 // , and add region #5 to allow both privileged/unprivileged accesses,
 // * 
@@ -158,10 +151,8 @@ static void vModifyMPUregionsForTest( void )
 } //// end of vModifyMPUregionsForTest
 
 
-
 // To declare a new test group in Unity, firstly you use the macro below
 TEST_GROUP( xPortStartScheduler );
-
 
 
 TEST_SETUP( xPortStartScheduler )
@@ -173,9 +164,6 @@ TEST_SETUP( xPortStartScheduler )
     expected_value = (RegsSet_chk_t *) unity_malloc( sizeof(RegsSet_chk_t) );
     actual_value   = (RegsSet_chk_t *) unity_malloc( sizeof(RegsSet_chk_t) );
 } // end of TEST_SETUP
-
-
-
 
 
 TEST_TEAR_DOWN( xPortStartScheduler )
@@ -201,7 +189,6 @@ TEST_TEAR_DOWN( xPortStartScheduler )
     // turn off the features we set for the test
     SCB->SHCSR  &= ~SCB_SHCSR_MEMFAULTENA_Msk;
     MPU->CTRL   &= ~(MPU_CTRL_ENABLE_Msk | MPU_CTRL_PRIVDEFENA_Msk);
-    SCB->CPACR  &= ~(SCB_CPACR_CP11_Msk | SCB_CPACR_CP10_Msk);
     FPU->FPCCR  &= ~FPU_FPCCR_LSPEN_Msk;
     SysTick->CTRL  = 0;
     SysTick->VAL   = 0;
@@ -212,8 +199,6 @@ TEST_TEAR_DOWN( xPortStartScheduler )
     expected_value = NULL; 
     actual_value   = NULL; 
 } // end of TEST_TEAR_DOWN
-
-
 
 
 TEST( xPortStartScheduler , regs_chk )
@@ -256,8 +241,7 @@ TEST( xPortStartScheduler , regs_chk )
     TEST_ASSERT_EQUAL_UINT8( expected_value->PendSV_IP, actual_value->PendSV_IP);
     expected_value->SVCall_IP = (unsigned portCHAR) configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY ;
     actual_value->SVCall_IP   = (unsigned portCHAR) NVIC_GetPriority( SVCall_IRQn );
-    TEST_ASSERT_EQUAL_UINT8( expected_value->SVCall_IP, actual_value->SVCall_IP );
-     
+    TEST_ASSERT_EQUAL_UINT8( expected_value->SVCall_IP, actual_value->SVCall_IP );     
 
     // check other system registers ....
     expected_value->SCB_SHCSR = SCB_SHCSR_MEMFAULTENA_Msk; 
@@ -337,6 +321,3 @@ TEST( xPortStartScheduler , regs_chk )
 
     TEST_ASSERT_EQUAL_UINT8( 1, ucVisitSVC0Flag );
 } //// end of test body
-
-
-

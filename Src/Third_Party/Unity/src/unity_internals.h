@@ -258,7 +258,7 @@ typedef UNITY_FLOAT_TYPE UNITY_FLOAT;
 #ifndef UNITY_OUTPUT_CHAR
   /* Default to using putchar, which is defined in stdio.h */
   #include <stdio.h>
-  //// disable the print function, instead we create data structure to store the test result
+  //// disable the print function, currently there is no console to output character for test reuslt
   //// #define UNITY_OUTPUT_CHAR(a) (void)putchar(a)
   #define UNITY_OUTPUT_CHAR(a) 
 #else
@@ -471,8 +471,8 @@ extern void* unity_malloc(size_t size);
     if(logger->failFlag == 0x0) { \
         void *expectptr0  =  unity_malloc( sizeof(UNITY_UINT32) ); \
         void *actualptr   =  unity_malloc( sizeof(UNITY_UINT32) ); \
-        *(UNITY_UINT32 *)expectptr0  =  expectVal;   \
-        *(UNITY_UINT32 *)actualptr   =  actualVal;   \
+        *(UNITY_UINT32 *)expectptr0  = (UNITY_UINT32) expectVal;   \
+        *(UNITY_UINT32 *)actualptr   = (UNITY_UINT32) actualVal;   \
         vLogTestMismatchGeneric( logger, line, compare_option, \
                                  expectptr0, NULL , actualptr ); \
     }
@@ -539,9 +539,8 @@ extern void* unity_malloc(size_t size);
 
 
 
-
-struct UNITY_STORAGE_T
-{
+// for identifying currently running test case
+struct UNITY_STORAGE_T {
     const char* TestFile;
     const char* CurrentTestName;
 #ifndef UNITY_EXCLUDE_DETAILS
@@ -835,14 +834,16 @@ int UnityTestMatches(void);
  * Basic Fail and Ignore
  *-------------------------------------------------------*/
 
-#define UNITY_TEST_FAIL(line, message, compare_option)   UnityFail(   (message), (UNITY_LINE_TYPE)(line), compare_option)
+#define UNITY_TEST_FAIL(line, message, compare_option)   UnityFail((message), (UNITY_LINE_TYPE)(line), compare_option)
 #define UNITY_TEST_IGNORE(line, message) UnityIgnore( (message), (UNITY_LINE_TYPE)(line))
 
 /*-------------------------------------------------------
  * Test Asserts
  *-------------------------------------------------------*/
 
-#define UNITY_TEST_ASSERT(condition, line, message, compare_option)     if (condition) {} else {UNITY_TEST_FAIL((UNITY_LINE_TYPE)(line), (message), compare_option);}
+#define UNITY_TEST_ASSERT(condition, line, message, compare_option) \
+    if (condition) {} else {UNITY_TEST_FAIL((UNITY_LINE_TYPE)(line), (message), compare_option);}
+
 #define UNITY_TEST_ASSERT_NULL(pointer, line, message)                                           UNITY_TEST_ASSERT(((pointer) == NULL),  (UNITY_LINE_TYPE)(line), (message), UNITY_EQUAL_TO)
 #define UNITY_TEST_ASSERT_NOT_NULL(pointer, line, message)                                       UNITY_TEST_ASSERT(((pointer) != NULL),  (UNITY_LINE_TYPE)(line), (message), UNITY_NOT_EQUAL_TO)
 #define UNITY_TEST_ASSERT_EQUAL_INT(expected, actual, line, logger)                             UnityAssertEqualNumber((UNITY_INT)(expected), (UNITY_INT)(actual), (logger), (UNITY_LINE_TYPE)(line), UNITY_DISPLAY_STYLE_INT)

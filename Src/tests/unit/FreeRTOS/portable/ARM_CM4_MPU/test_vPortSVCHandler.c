@@ -19,7 +19,8 @@ static flagSet_chk_t  *expected_value = NULL;
 static flagSet_chk_t  *actual_value = NULL;
 // from port.c
 extern PRIVILEGED_FUNCTION void prvSetupMPU( void );
-
+extern PRIVILEGED_FUNCTION void vPortGetMPUregion(portSHORT, xMPU_REGION_REGS *);
+extern PRIVILEGED_FUNCTION void vPortSetMPUregion(xMPU_REGION_REGS *);
 
 void TEST_HELPER_vPortSVCHandler_SVCentry( uint8_t ucSVCnumber )
 {

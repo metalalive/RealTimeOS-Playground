@@ -5,12 +5,8 @@
 #define SW_TIM_TIMER_ID     0
 
 static volatile portSHORT  uNumSWTimEvtsRecv ;
-// for logging assertion failure
-static TestLogger_t    *logger = NULL; 
 
-
-static void vChkSWTimerCallback( TimerHandle_t xTimer )
-{
+static void vChkSWTimerCallback(TimerHandle_t xTimer) {
     const portSHORT maxAllowableMarginTicks = 10;
     TickType_t expectedTickCount = 0;
     TickType_t actualTickCount   = 0;
@@ -24,15 +20,11 @@ static void vChkSWTimerCallback( TimerHandle_t xTimer )
     actualTickCount   = xTaskGetTickCount();
     //// TEST_COUNT_ERROR_GT( expectedTickCount, actualTickCount, error_flag_ptr);
     //// TEST_COUNT_ERROR_LT( (expectedTickCount + maxAllowableMarginTicks), actualTickCount, error_flag_ptr);
-    TEST_ASSERT_GREATER_OR_EQUAL_UINT32_LOGGER( expectedTickCount, actualTickCount, logger );
-    TEST_ASSERT_LESS_OR_EQUAL_UINT32_LOGGER( (expectedTickCount + maxAllowableMarginTicks), actualTickCount, logger );
-} //// end of vChkSWTimerCallback()
+    TEST_ASSERT_GREATER_OR_EQUAL_UINT32(expectedTickCount, actualTickCount);
+    TEST_ASSERT_LESS_OR_EQUAL_UINT32((expectedTickCount + maxAllowableMarginTicks), actualTickCount);
+}
 
-
-
-void vStartSoftwareTimerTest( UBaseType_t uxPriority )
-{
-    logger = xRegisterNewTestLogger( __FILE__ , "software timer test");
+void vStartSoftwareTimerTest(UBaseType_t uxPriority) {
     const portSHORT auto_reload_timer = pdTRUE;
     const portSHORT xDontBlock = 0x0;
     TimerHandle_t   xCheckTimer = NULL;
@@ -41,9 +33,7 @@ void vStartSoftwareTimerTest( UBaseType_t uxPriority )
     //  when RTOS kernel starts task scheduler
     // (also when tick count in RTOS kernel is zero initially)
     uNumSWTimEvtsRecv = 0;
-    xCheckTimer       = xTimerCreate("ChkTimer", SW_TIM_PERIOD_TICK, auto_reload_timer, SW_TIM_TIMER_ID, vChkSWTimerCallback);
+    xCheckTimer = xTimerCreate("ChkTimer", SW_TIM_PERIOD_TICK, auto_reload_timer, SW_TIM_TIMER_ID, vChkSWTimerCallback);
     configASSERT( xCheckTimer );
     xTimerStart( xCheckTimer, xDontBlock );
-} //// end of vStartSoftwareTimerTest
-
-
+}

@@ -6,8 +6,6 @@
 #define  intgSTACK_SIZE      (( unsigned portSHORT ) 0x3e)
 
 static TaskHandle_t   StkOvflTask_tcb ;
-// for logging assertion failure
-static TestLogger_t  *logger = NULL; 
 static StackType_t   *stackMemPtrbackup ;
 volatile static StackType_t   *preserve_space_ovfl ;
 static UBaseType_t    expectNumStkOvfls = 0;
@@ -23,41 +21,29 @@ void vApplicationStackOverflowHook( TaskHandle_t pxCurrentTCBhandle, const portC
 } //// end of vApplicationStackOverflowHook()
 #endif //// end of configCHECK_FOR_STACK_OVERFLOW
 
-
-
-
-static UBaseType_t vRecurFibonacciNum(unsigned portSHORT n )
-{
+static UBaseType_t vRecurFibonacciNum(unsigned portSHORT n) {
     if(n < 2) {
         return n;
     }
     else {
         return vRecurFibonacciNum(n - 2) + vRecurFibonacciNum(n - 1) ; 
     }
-} //// end of vRecurFibonacciNum()
+}
 
-
-
-
-static void vStkOvflTask (void *pvParams)
-{
+static void vStkOvflTask (void *pvParams) {
     const portSHORT idx = 0;
-    TEST_ASSERT_EQUAL_UINT32_LOGGER( expectNumStkOvfls, actualNumStkOvfls, logger );
+    TEST_ASSERT_EQUAL_UINT32(expectNumStkOvfls, actualNumStkOvfls);
     expectNumStkOvfls++;
     // delibarately invoke a recursive function, fill the task's stack space, 
     // until stack overflow is detected by underlying hardware (e.g. MPU, MMU in CPU)
     // then recover stack frames for this user task within RTOS kernel.
     vRecurFibonacciNum( intgSTACK_SIZE );
     // CPU should NOT get here in this test case.
-    TEST_ASSERT_EQUAL_UINT32_LOGGER( expectNumStkOvfls, actualNumStkOvfls, logger );
+    TEST_ASSERT_EQUAL_UINT32(expectNumStkOvfls, actualNumStkOvfls);
     for(;;);
-} //// end of vStkOvflTask()
+}
 
-
-
-
-BaseType_t vStackOvflFaultHandler(void)
-{
+BaseType_t vStackOvflFaultHandler(void) {
     BaseType_t alreadyHandled = pdFALSE;
 #if (configCHECK_FOR_STACK_OVERFLOW > 0)
     // check if the task at which stack overflow happened is StkOvflTask_tcb,
@@ -73,12 +59,9 @@ BaseType_t vStackOvflFaultHandler(void)
         vPortTestModifyLinkReg( (UBaseType_t)portEXPTN_RETURN_TO_TASK );
         vPortTestReturnFromHandler();
     }
-#endif //// end of configCHECK_FOR_STACK_OVERFLOW
+#endif
     return alreadyHandled;
-} // end of vStackOvflFaultHandler
-
-
-
+}
 
 void vStartStackOverflowCheck( UBaseType_t uxPriority )
 {
@@ -91,16 +74,13 @@ void vStartStackOverflowCheck( UBaseType_t uxPriority )
 
     preserve_space_ovfl = (StackType_t *) pvPortMalloc( sizeof(StackType_t) * 0x1e );
 
-    logger = xRegisterNewTestLogger( __FILE__ , "stack overflow check");
     stackMemSpace = (StackType_t *) pvPortMalloc(sizeof(StackType_t) * intgSTACK_SIZE);
     stackMemPtrbackup = stackMemSpace + intgSTACK_SIZE - 1; 
     stackMemPtrbackup = (StackType_t *) (((portPOINTER_SIZE_TYPE) stackMemPtrbackup ) & (~((portPOINTER_SIZE_TYPE)portBYTE_ALIGNMENT_MASK ))); 
     TaskParameters_t tskparams = {
         vStkOvflTask, "StkOvflTask", intgSTACK_SIZE, NULL,
         uxPriority , stackMemSpace, 
-        // leave MPU regions uninitialized
     }; 
-    // default value to xRegions 
     for(idx=0; idx<portNUM_CONFIGURABLE_REGIONS; idx++)
     {
         tskparams.xRegions[idx].pvBaseAddress   = NULL;
@@ -108,13 +88,11 @@ void vStartStackOverflowCheck( UBaseType_t uxPriority )
         tskparams.xRegions[idx].ulParameters    = 0;
     }
     // add extra region for logging assertion failure in unprivileged tasks.
-    tskparams.xRegions[0].pvBaseAddress   = (UBaseType_t) __unpriv_data_start__;
+    tskparams.xRegions[0].pvBaseAddress   = (void *) __unpriv_data_start__;
     tskparams.xRegions[0].ulLengthInBytes = (UBaseType_t) __unpriv_data_end__ - (UBaseType_t) __unpriv_data_start__;
     tskparams.xRegions[0].ulParameters    = portMPU_REGION_READ_WRITE | MPU_RASR_S_Msk
                                            | MPU_RASR_C_Msk | MPU_RASR_B_Msk;
     xState = xTaskCreateRestricted( (const TaskParameters_t * const)&tskparams, &StkOvflTask_tcb );
     configASSERT( xState == pdPASS );
 #endif
-} //// end of vStartStackOverflowCheck()
-
-
+} // end of vStartStackOverflowCheck()

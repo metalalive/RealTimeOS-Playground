@@ -10,6 +10,8 @@
 #   2015-07-22 - first version
 # ------------------------------------------------
 
+ARM_TOOLCHAIN_BASEPATH = /PATH/TO/YOUR_TOOLCHAIN
+
 ######################################
 # target
 ######################################
@@ -23,8 +25,6 @@ TARGET = stm32_port_freertos_v10.2
 DEBUG = 1
 # optimization
 OPT = -Og
-
-OPENOCD_HOME=/PATH/TO/YOUR_OPENOCD_INSTALL
 
 #######################################
 # paths
@@ -64,33 +64,36 @@ ASM_SOURCES =  \
 startup_stm32f446xx.s
 
 
+EXTRA_BINPATH  = $(ARM_TOOLCHAIN_BASEPATH)/bin
+EXTRA_BINPATH2 = $(ARM_TOOLCHAIN_BASEPATH)/libexec/gcc/arm-none-eabi/14.2.1
+EXTRA_BINPATH3 = $(ARM_TOOLCHAIN_BASEPATH)/arm-none-eabi/bin
+
+# The gcc compiler bin path can be either defined in make command via
+# either it can be added to the PATH environment variable.
+export PATH := $(EXTRA_BINPATH):$(EXTRA_BINPATH2):$(EXTRA_BINPATH3):$(PATH)
+
+EXTRA_LIBPATH = $(ARM_TOOLCHAIN_BASEPATH)/arm-none-eabi/lib
+EXTRA_LIBPATH2 = $(ARM_TOOLCHAIN_BASEPATH)/libexec/gcc/arm-none-eabi/14.2.1
+EXTRA_LIBPATH3 = $(ARM_TOOLCHAIN_BASEPATH)/lib/gcc/arm-none-eabi/14.2.1
+export LD_LIBRARY_PATH := $(EXTRA_LIBPATH):$(EXTRA_LIBPATH2):$(EXTRA_LIBPATH3):$(LD_LIBRARY_PATH)
+
 #######################################
 # binaries
 #######################################
 PREFIX = arm-none-eabi-
-# The gcc compiler bin path can be either defined in make command via GCC_PATH variable (> make GCC_PATH=xxx)
-# either it can be added to the PATH environment variable.
-ifdef GCC_PATH
-CC = $(GCC_PATH)/$(PREFIX)gcc
-AS = $(GCC_PATH)/$(PREFIX)gcc -x assembler-with-cpp
-CP = $(GCC_PATH)/$(PREFIX)objcopy
-SZ = $(GCC_PATH)/$(PREFIX)size
-DUMP = $(GCC_PATH)/$(PREFIX)objdump
-else
 CC = $(PREFIX)gcc
 AS = $(PREFIX)gcc -x assembler-with-cpp
 CP = $(PREFIX)objcopy
 SZ = $(PREFIX)size
 DUMP = $(PREFIX)objdump
-endif
 HEX = $(CP) -O ihex
 BIN = $(CP) -O binary -S
  
 #######################################
-# CFLAGS
+# Compile Flags
 #######################################
 # cpu
-CPU = -mcpu=cortex-m4
+CPU = -march=armv7e-m+fp  -mcpu=cortex-m4
 
 # fpu
 FPU = -mfpu=fpv4-sp-d16
@@ -111,20 +114,24 @@ C_DEFS =  \
 -DSTM32F446xx 
 
 
+TOOLCHAIN_INCLUDES = \
+  -I$(ARM_TOOLCHAIN_BASEPATH)/lib/gcc/arm-none-eabi/14.2.1/include \
+  -I$(ARM_TOOLCHAIN_BASEPATH)/arm-none-eabi/include
 
 # AS includes
 AS_INCLUDES = 
 
+
 # C includes
 C_INCLUDES =  \
--IInc \
--IDrivers/STM32F4xx_HAL_Driver/Inc \
--IDrivers/STM32F4xx_HAL_Driver/Inc/Legacy \
--IDrivers/CMSIS/Device/ST/STM32F4xx/Include \
--IDrivers/CMSIS/Include \
--ISrc/Third_Party/FreeRTOS/Source/include \
--ISrc/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4_MPU \
-
+  -IInc \
+  -IDrivers/STM32F4xx_HAL_Driver/Inc \
+  -IDrivers/STM32F4xx_HAL_Driver/Inc/Legacy \
+  -IDrivers/CMSIS/Device/ST/STM32F4xx/Include \
+  -IDrivers/CMSIS/Include \
+  -ISrc/Third_Party/FreeRTOS/Source/include \
+  -ISrc/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4_MPU \
+  $(TOOLCHAIN_INCLUDES) 
 
 
 #### ------------------------------------------------------------------
@@ -196,18 +203,12 @@ endif #### end of UNIT_TEST
 
 
 # compile gcc flags
-ASFLAGS = $(MCU) $(AS_DEFS) $(AS_INCLUDES) $(OPT) -Wall -fdata-sections -ffunction-sections
-
 CFLAGS = $(MCU) $(C_DEFS) $(C_INCLUDES) $(OPT) -Wall -fdata-sections -ffunction-sections -Wint-to-pointer-cast
-
 ifeq ($(DEBUG), 1)
 CFLAGS += -g -gdwarf-2
 endif
-
-
 # Generate dependency information
 CFLAGS += -MMD -MP -MF"$(@:%.o=%.d)"
-
 
 #######################################
 # LDFLAGS
@@ -216,9 +217,9 @@ CFLAGS += -MMD -MP -MF"$(@:%.o=%.d)"
 LDSCRIPT = STM32F446RETx_FLASH.ld
 
 # libraries
-LIBS = -lc -lm -lnosys 
+LIBS = -lc -lm -lnosys
 LIBDIR = 
-LDFLAGS = $(MCU) -specs=nano.specs -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(BUILD_DIR)/$(TARGET).map,--cref -Wl,--gc-sections
+LDFLAGS = $(MCU) -specs=nosys.specs -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(BUILD_DIR)/$(TARGET).map,--cref -Wl,--gc-sections
 
 # default action: build all
 all: $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET).text $(BUILD_DIR)/$(TARGET).bin
@@ -272,13 +273,16 @@ clean:
 #######################################
 # execute/debug in the tests
 #######################################
+
 dbg_server:
-	@openocd -f $(OPENOCD_HOME)/tcl/board/st_nucleo_f4.cfg \
-                 -f $(OPENOCD_HOME)/tcl/interface/stlink-v2-1.cfg \
-                 -c init -c "reset init"
+	@openocd --search /usr/share/openocd/scripts \
+		--file board/st_nucleo_f4.cfg \
+		--file interface/stlink.cfg \
+		--command init --command "reset init"
 
 dbg_client:
-	@gdb-multiarch -x ./test_utility.gdb
+	## @gdb-multiarch -x ./test_utility.gdb
+	@arm-none-eabi-gdb -x ./test_utility.gdb
 
 #######################################
 # help documentation
@@ -289,13 +293,19 @@ help:
 	@echo "                                                      ";
 	@echo " Options for building image, running, and debugging   ";
 	@echo "                                                      ";
+	@echo " To build test image, be sure to speficy toolchain base";
+	@echo " path for your target board, currently supported CPUs :";
+	@echo "                                                      ";
+	@echo "   ARM_TOOLCHAIN_BASEPATH=/PATH/TO/YOUR_TOOLCHAIN     ";
+	@echo "                                                      ";
+	@echo "                                                      ";
 	@echo " * make UNIT_TEST=yes                                 ";
 	@echo "   Build image to run unit tests.                     ";
 	@echo "                                                      ";
 	@echo " * make INTEGRATION_TEST=yes                          ";
 	@echo "   Build image to run integration tests.              ";
 	@echo "                                                      ";
-	@echo " * make dbg_server OPENOCD_HOME=/PATH/TO/YOUR_OPENOCD ";
+	@echo " * make dbg_server ";
 	@echo "   launch debug server, we use OpenOCD (v0.10.0) here ";
 	@echo "   . Note that superuser permission would be required ";
 	@echo "   when running openOCD, the command differs & depends";

@@ -182,12 +182,6 @@ header file. */
     #define vPortHardFaultHandler  HardFault_Handler
 #endif //// end of UNIT_TEST
 
-/* USER CODE BEGIN 2 */    
-/* Definitions needed when configGENERATE_RUN_TIME_STATS is on */
-#define portCONFIGURE_TIMER_FOR_RUN_TIME_STATS  vCfgTimerForRuntimeStats
-#define portGET_RUN_TIME_COUNTER_VALUE          ulGetRuntimeCounterVal    
-/* USER CODE END 2 */
-
 /* USER CODE BEGIN Defines */   	      
 /* Section where parameter definitions can be added (for instance, to override default ones in FreeRTOS.h) */
 /* USER CODE END Defines */ 

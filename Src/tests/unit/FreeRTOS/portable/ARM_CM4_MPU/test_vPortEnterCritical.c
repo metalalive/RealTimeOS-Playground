@@ -7,6 +7,10 @@
 // for FreeRTOS
 #include "FreeRTOS.h"
 
+extern void prvSetupMPU( void );
+extern void vPortGetMPUregion(portSHORT, xMPU_REGION_REGS *);
+extern void vPortSetMPUregion(xMPU_REGION_REGS *);
+
 typedef struct {
     UBaseType_t  sharedCounter;
     UBaseType_t  numNest;     // number of times a task re-enters a critical section

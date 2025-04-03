@@ -13,8 +13,6 @@ typedef struct {
     QueueHandle_t        xQueue;    
     // the blocking time applied in Queue send/receive operations
     TickType_t           xBlockTime;
-    // for logging assertion failure
-    TestLogger_t        *logger; 
 } qCaseParamStruct;
 
 // following can be used to control task 2's behavior since task 2 has
@@ -25,7 +23,6 @@ static volatile TaskHandle_t Qks2recvChkTask;
 static volatile const portSHORT  possibleQItemValue[SHARED_Q_LENGTH] = {-81 ,13, -5, 63, -47};
 
 
-
 // count number of 1's in binary representation of a given 16-bit number
 // we apply Brian Kernighan's algorithm to this function.
 //
@@ -34,8 +31,7 @@ static volatile const portSHORT  possibleQItemValue[SHARED_Q_LENGTH] = {-81 ,13,
 // then a lookup table is feasible to achieve constant running time O(1) because you can
 // map the small value ot input number to number of 1's in its binary form
 //
-static unsigned portSHORT Count1sBinarySeq(portSHORT in)
-{
+static unsigned portSHORT Count1sBinarySeq(portSHORT in) {
     unsigned portSHORT count = 0;
     portSHORT pattern = in;
     while (pattern != 0) {
@@ -45,34 +41,25 @@ static unsigned portSHORT Count1sBinarySeq(portSHORT in)
     return count;
 }
 
-
-
 static void vQks2recvChk(void *pvParams)
 {
-    qCaseParamStruct *qParams  = (qCaseParamStruct *) pvParams;
-    QueueHandle_t       xQueue = qParams->xQueue;
-    TickType_t      xBlockTime = qParams->xBlockTime;
-    TestLogger_t       *logger = qParams->logger;
+    qCaseParamStruct *qParams = (qCaseParamStruct *) pvParams;
+    QueueHandle_t      xQueue = qParams->xQueue;
+    TickType_t     xBlockTime = qParams->xBlockTime;
 
     portSHORT qItem ;
     BaseType_t QopsStatus ;
-    portSHORT actualSequenceItems[SHARED_Q_LENGTH] ;
-    portSHORT expectSequenceItems[SHARED_Q_LENGTH] ;
-    unsigned portSHORT bitPatternOfQueueSendOpts;
-    unsigned portSHORT num1sBitPattern;
-    portSHORT qSendToBackIdx  ;
-    portSHORT qSendToFrontIdx ;
-    unsigned portSHORT idx ;
-    unsigned portSHORT jdx ;
+    portSHORT actualSequenceItems[SHARED_Q_LENGTH] = {0}, expectSequenceItems[SHARED_Q_LENGTH] = {0};
+    unsigned portSHORT bitPatternOfQueueSendOpts, num1sBitPattern;
+    portSHORT qSendToBackIdx, qSendToFrontIdx;
+    unsigned portSHORT idx, jdx;
 
-    for (;;)
-    {
-        for (idx=0; idx<(portSHORT)pow(2,SHARED_Q_LENGTH); idx++)
-        {
+    for(;;) {
+        for (idx=0; idx<(portSHORT)pow(2,SHARED_Q_LENGTH); idx++) {
             // suspend itself until task 1 fills the shared queue
             vTaskSuspend(NULL);
             // after the task is woken, the shared queue should be full ...
-            TEST_ASSERT_EQUAL_UINT32_LOGGER( SHARED_Q_LENGTH, uxQueueMessagesWaiting(xQueue), logger );
+            TEST_ASSERT_EQUAL_UINT32(SHARED_Q_LENGTH, uxQueueMessagesWaiting(xQueue));
             bitPatternOfQueueSendOpts = idx;
             // calculate number of 1's in bitPatternOfQueueSendOpts,
             num1sBitPattern = Count1sBinarySeq( bitPatternOfQueueSendOpts );
@@ -97,67 +84,58 @@ static void vQks2recvChk(void *pvParams)
             }
             configASSERT( (bitPatternOfQueueSendOpts == 0) );
             // read out & check items from queue one by one, and compare with expectSequenceItems
-            for (jdx=0; jdx<SHARED_Q_LENGTH; jdx++)
-            {
+            for (jdx=0; jdx<SHARED_Q_LENGTH; jdx++) {
                 // read the item without removing it from the shared queue
                 qItem = 0;
                 actualSequenceItems[jdx] = 0;
                 QopsStatus = xQueuePeek( xQueue, (void *)&qItem, xBlockTime );
                 actualSequenceItems[jdx] = qItem;
-                TEST_ASSERT_EQUAL_INT32_LOGGER(  pdPASS, QopsStatus, logger );
-                TEST_ASSERT_EQUAL_UINT32_LOGGER( (SHARED_Q_LENGTH - jdx), uxQueueMessagesWaiting(xQueue), logger );
-                TEST_ASSERT_EQUAL_INT16_LOGGER( expectSequenceItems[jdx], actualSequenceItems[jdx], logger );
+                TEST_ASSERT_EQUAL_INT32(pdPASS, QopsStatus);
+                TEST_ASSERT_EQUAL_UINT32((SHARED_Q_LENGTH - jdx), uxQueueMessagesWaiting(xQueue));
+                TEST_ASSERT_EQUAL_INT16(expectSequenceItems[jdx], actualSequenceItems[jdx]);
                 // read the item and remove it from the shared queue
                 qItem = 0;
                 actualSequenceItems[jdx] = 0;
                 QopsStatus = xQueueReceive( xQueue, (void *)&qItem, xBlockTime );
                 actualSequenceItems[jdx] = qItem;
-                TEST_ASSERT_EQUAL_INT32_LOGGER(  pdPASS, QopsStatus, logger );
-                TEST_ASSERT_EQUAL_UINT32_LOGGER( (SHARED_Q_LENGTH - 1 - jdx), uxQueueMessagesWaiting(xQueue), logger );
-                TEST_ASSERT_EQUAL_INT16_LOGGER( expectSequenceItems[jdx], actualSequenceItems[jdx], logger );
+                TEST_ASSERT_EQUAL_INT32(pdPASS, QopsStatus);
+                TEST_ASSERT_EQUAL_UINT32((SHARED_Q_LENGTH - 1 - jdx), uxQueueMessagesWaiting(xQueue));
+                TEST_ASSERT_EQUAL_INT16(expectSequenceItems[jdx], actualSequenceItems[jdx]);
             }
-        }  //// end of loop through bit patterns of the number ranging from 0 to 2 ^ SHARED_Q_LENGTH
-    } //// end of outer infinite loop
-} //// end of vQks2recvChk
+        }  // end of loop through bit patterns of the number ranging from 0 to 2 ^ SHARED_Q_LENGTH
+    } // end of outer infinite loop
+} // end of vQks2recvChk
 
 
-
-
-
-static void vQks2sender(void *pvParams)
-{
+static void vQks2sender(void *pvParams) {
     qCaseParamStruct *qParams  = (qCaseParamStruct *) pvParams;
     QueueHandle_t       xQueue = qParams->xQueue;
     TickType_t      xBlockTime = qParams->xBlockTime;
-    TestLogger_t       *logger = qParams->logger;
 
     portSHORT qItem ;
     BaseType_t QopsStatus ;
-    unsigned portSHORT bitPatternOfQueueSendOpts;
-    unsigned portSHORT idx ;
-    unsigned portSHORT jdx ;
+    unsigned portSHORT bitPatternOfQueueSendOpts, idx, jdx;
 
-    for (;;)
-    {
+    for (;;) {
         // check if queue works correctly when sending one item to the front of the queue
         qItem = possibleQItemValue[2];
         xQueueSendToFront( xQueue, (void *)&qItem, xBlockTime );
-        TEST_ASSERT_EQUAL_UINT32_LOGGER( 1, uxQueueMessagesWaiting(xQueue), logger );
+        TEST_ASSERT_EQUAL_UINT32(1, uxQueueMessagesWaiting(xQueue));
         qItem = 0;
         QopsStatus = xQueueReceive( xQueue, (void *)&qItem, xBlockTime );
-        TEST_ASSERT_EQUAL_UINT32_LOGGER( 0, uxQueueMessagesWaiting(xQueue), logger );
-        TEST_ASSERT_EQUAL_INT32_LOGGER( pdPASS, QopsStatus, logger );
-        TEST_ASSERT_EQUAL_INT16_LOGGER( possibleQItemValue[2], qItem, logger );
+        TEST_ASSERT_EQUAL_UINT32(0, uxQueueMessagesWaiting(xQueue));
+        TEST_ASSERT_EQUAL_INT32(pdPASS, QopsStatus);
+        TEST_ASSERT_EQUAL_INT16(possibleQItemValue[2], qItem);
 
         // do the same thing again, but we send one item to the back of the queue
         qItem = possibleQItemValue[4];
         xQueueSendToBack( xQueue, (void *)&qItem, xBlockTime );
-        TEST_ASSERT_EQUAL_UINT32_LOGGER( 1, uxQueueMessagesWaiting(xQueue), logger );
+        TEST_ASSERT_EQUAL_UINT32(1, uxQueueMessagesWaiting(xQueue));
         qItem = 0;
         QopsStatus = xQueueReceive( xQueue, (void *)&qItem, xBlockTime );
-        TEST_ASSERT_EQUAL_UINT32_LOGGER( 0, uxQueueMessagesWaiting(xQueue), logger );
-        TEST_ASSERT_EQUAL_INT32_LOGGER( pdPASS, QopsStatus, logger );
-        TEST_ASSERT_EQUAL_INT16_LOGGER( possibleQItemValue[4], qItem, logger );
+        TEST_ASSERT_EQUAL_UINT32(0, uxQueueMessagesWaiting(xQueue));
+        TEST_ASSERT_EQUAL_INT32(pdPASS, QopsStatus);
+        TEST_ASSERT_EQUAL_INT16(possibleQItemValue[4], qItem);
 
         // from here on, this task fills the shared queue, using xQueueSendToFront() or
         // xQueueSendToBack()  with respect to bit pattern of the variable idx, 
@@ -180,8 +158,7 @@ static void vQks2sender(void *pvParams)
             // get next pattern of the number, in this integration test, we only look at the last
             // 5 bits of bitPatternOfQueueSendOpts
             bitPatternOfQueueSendOpts = idx;
-            for (jdx=0; jdx<SHARED_Q_LENGTH; jdx++)
-            {
+            for (jdx=0; jdx<SHARED_Q_LENGTH; jdx++) {
                 // always check the LSB (least significant bit, bit 0) of bitPatternOfQueueSendOpts, then
                 // discard the LSB by shifting bitPatternOfQueueSendOpts to the right by one bit position.
                 // By doing so iteratively, we can sequentially read the the last 5 bits of a pattern.
@@ -192,30 +169,27 @@ static void vQks2sender(void *pvParams)
                 else {
                     xQueueSendToBack( xQueue, (void *)&qItem, xBlockTime );
                 }
-                TEST_ASSERT_EQUAL_UINT32_LOGGER( (jdx+1), uxQueueMessagesWaiting(xQueue), logger );
+                TEST_ASSERT_EQUAL_UINT32((jdx+1), uxQueueMessagesWaiting(xQueue));
                 bitPatternOfQueueSendOpts = bitPatternOfQueueSendOpts >> 1;
             }
             // by resuming the other task, this task should be preempted then the other task takes
             // the rest of work then finally empty the queue .
             vTaskResume( Qks2recvChkTask );
         }
-    } //// end of outer infinite loop
-} //// end of vQks2sender
-
-
-
+    } // end of outer infinite loop
+} // end of vQks2sender
 
 
 void vStartQueueTestCase2( UBaseType_t uxPriority )
 {
-    const portSHORT     xDontBlock      = 0;
-    qCaseParamStruct   *pxQparamsToTask[NUM_OF_TASKS] ;
-    StackType_t        *stackMemSpace[NUM_OF_TASKS] ;
-    QueueHandle_t       xQueue;    
-    BaseType_t          xState; 
+    const portSHORT     xDontBlock = 0;
+    qCaseParamStruct   *pxQparamsToTask[NUM_OF_TASKS] = {0};
+    StackType_t        *stackMemSpace[NUM_OF_TASKS] = {0};
+    BaseType_t          xState;
     unsigned portSHORT  idx;
 
-    xQueue = xQueueCreate( SHARED_Q_LENGTH, (unsigned portBASE_TYPE) sizeof(portSHORT) );
+    QueueHandle_t  xQueue = xQueueCreate(SHARED_Q_LENGTH, (unsigned portBASE_TYPE) sizeof(portSHORT));
+    configASSERT( xQueue );
     for (idx=0; idx<NUM_OF_TASKS; idx++) {
         stackMemSpace[idx] = (StackType_t *) pvPortMalloc( sizeof(StackType_t) * intgSTACK_SIZE );
     }
@@ -225,23 +199,16 @@ void vStartQueueTestCase2( UBaseType_t uxPriority )
     configASSERT( pxQparamsToTask[1] );
     pxQparamsToTask[0]->xBlockTime  = xDontBlock;
     pxQparamsToTask[1]->xBlockTime  = xDontBlock;
-    pxQparamsToTask[0]->logger      = xRegisterNewTestLogger( __FILE__ , "Queue test (case 2) -- sender task" );
-    pxQparamsToTask[1]->logger      = xRegisterNewTestLogger( __FILE__ , "Queue test (case 2) -- receiver task" );
     pxQparamsToTask[0]->xQueue      = xQueue;
     pxQparamsToTask[1]->xQueue      = xQueue;
-    configASSERT( xQueue );
-    configASSERT( pxQparamsToTask[0]->logger );
-    configASSERT( pxQparamsToTask[1]->logger );
 
     TaskParameters_t tsk1params = {
         vQks2sender, "Qks2sender", intgSTACK_SIZE, (void *)pxQparamsToTask[0],
         (uxPriority | portPRIVILEGE_BIT), stackMemSpace[0],
-        // leave MPU regions uninitialized
     };
     TaskParameters_t tsk2params = {
         vQks2recvChk, "Qks2recvChk", intgSTACK_SIZE, (void *)pxQparamsToTask[1],
         ((uxPriority+1) | portPRIVILEGE_BIT), stackMemSpace[1],
-        // leave MPU regions uninitialized
     };
     // default value to unused MPU regions 
     for(idx=0; idx<portNUM_CONFIGURABLE_REGIONS; idx++)
@@ -257,7 +224,4 @@ void vStartQueueTestCase2( UBaseType_t uxPriority )
     configASSERT( xState == pdPASS );
     xState = xTaskCreateRestricted( (const TaskParameters_t * const)&tsk2params, &Qks2recvChkTask );
     configASSERT( xState == pdPASS );
-
-} //// end of vStartQue ueTestCase2
-
-
+} // end of vStartQue ueTestCase2

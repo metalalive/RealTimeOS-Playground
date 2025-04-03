@@ -1,3 +1,4 @@
+#include <string.h>
 // for C unit test framework Unity
 #include "unity_fixture.h"
 // for FreeRTOS

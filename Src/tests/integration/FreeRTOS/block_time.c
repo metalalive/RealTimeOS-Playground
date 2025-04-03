@@ -19,20 +19,12 @@ static const BaseType_t  possibleQItemValue[SHARED_Q_LENGTH * 2] = {-81 ,13, -3,
 // is internally used in this integration test, otherwise this variable should be zero
 static volatile portCHAR ucSecondaryTaskReadyFlag = 0;
 
-
-
-
-static void vDelayFunctionTest(TestLogger_t *logger)
-{
+static void vDelayFunctionTest(void) {
     UBaseType_t uxPriority = uxTaskPriorityGet(NULL);
     const TickType_t  uxBlockTimeBase = 75;
-    TickType_t  xStartTime = 0;
-    TickType_t  xEndTime   = 0;
-    TickType_t  xAllowableDelay = 0;
-    TickType_t  xActualDelay = 0;
+    TickType_t  xStartTime = 0, xEndTime = 0, xAllowableDelay = 0, xActualDelay = 0;
     TickType_t  xLastUnblockTimeTick = 0;
-    unsigned portSHORT   uxIteration = 5;
-    unsigned portSHORT   idx = 0;
+    unsigned portSHORT   uxIteration = 5, idx = 0;
 
     // Since we will run all integration tests concurrently, with application tasks of different priority,
     // In this function, in order to get precise estimated delay time, we'll have to 
@@ -49,47 +41,36 @@ static void vDelayFunctionTest(TestLogger_t *logger)
     GET_TICKS_INTERVAL(xStartTime, xEndTime, xActualDelay);
     xAllowableDelay = uxBlockTimeBase + xAllowableMargin;
 
-    TEST_ASSERT_GREATER_OR_EQUAL_UINT32_LOGGER( uxBlockTimeBase, xActualDelay, logger );
-    TEST_ASSERT_LESS_THAN_UINT32_LOGGER(    xAllowableDelay, xActualDelay, logger );
-
+    TEST_ASSERT_GREATER_OR_EQUAL_UINT32( uxBlockTimeBase, xActualDelay );
+    TEST_ASSERT_LESS_THAN_UINT32(xAllowableDelay, xActualDelay);
     // ------ crude check to estimated delayed time of vTaskDelayUntil() ------
     xStartTime = xTaskGetTickCount();
     xLastUnblockTimeTick = xStartTime;
 
-    for(idx=0; idx<uxIteration; idx++)
-    {
+    for(idx=0; idx<uxIteration; idx++) {
         // vTaskDelayUntil() internally appends uxBlockTimeBase to xLastUnblockTimeTick, which means the current
         // task will get ready again after the amount of specified delay time (uxBlockTimeBase) passes.
         vTaskDelayUntil( &xLastUnblockTimeTick, uxBlockTimeBase );
         xEndTime = xTaskGetTickCount();
-
         GET_TICKS_INTERVAL(xStartTime, xEndTime, xActualDelay);
         // xStartTime is not changed in this loop, we adjust maximum allowable delay time.
         xAllowableDelay = (idx + 1) * uxBlockTimeBase + xAllowableMargin;
-        TEST_ASSERT_LESS_THAN_UINT32_LOGGER( xAllowableDelay, xActualDelay, logger );
+        TEST_ASSERT_LESS_THAN_UINT32( xAllowableDelay, xActualDelay );
     }
-
     // recover the priority of current task
     vTaskPrioritySet(NULL, uxPriority);
 } //// end of vDelayFunctionTest()
 
 
-
-
-static void vDlyTimeQueueRecvTest (TestLogger_t *logger)
-{
+static void vDlyTimeQueueRecvTest(void) {
     const TickType_t  uxBlockTimeBase = 10;
-    TickType_t  xStartTime = 0;
-    TickType_t  xEndTime   = 0;
-    TickType_t  xExpectedDelay  = 0;
-    TickType_t  xActualDelay = 0;
+    TickType_t  xStartTime = 0, xEndTime = 0;
+    TickType_t  xExpectedDelay = 0, xActualDelay = 0;
     BaseType_t  QoperationStatus = pdPASS;
     BaseType_t  qItem = 0x0;
-    unsigned portSHORT   uxIteration = 5;
-    unsigned portSHORT   idx = 0;
+    unsigned portSHORT   uxIteration = 5, idx = 0;
 
-    for(idx=0; idx<uxIteration; idx++)
-    {
+    for(idx=0; idx<uxIteration; idx++) {
         QoperationStatus = pdPASS;
         xExpectedDelay = uxBlockTimeBase << idx;
         // when current task runs at here, the shared queue is empty, we call xQueueReceive()
@@ -97,20 +78,17 @@ static void vDlyTimeQueueRecvTest (TestLogger_t *logger)
         xStartTime = xTaskGetTickCount();
         QoperationStatus = xQueueReceive( xSharedQueue, &qItem, xExpectedDelay );
         xEndTime   = xTaskGetTickCount();
-
         GET_TICKS_INTERVAL(xStartTime, xEndTime, xActualDelay);
         // the shared queue must be empty therefore it should return errQUEUE_EMPTY
-        TEST_ASSERT_EQUAL_UINT32_LOGGER( errQUEUE_EMPTY,QoperationStatus, logger );
+        TEST_ASSERT_EQUAL_UINT32( errQUEUE_EMPTY,QoperationStatus );
         // check the estimated blocking time
-        TEST_ASSERT_GREATER_OR_EQUAL_UINT32_LOGGER( xExpectedDelay, xActualDelay, logger );
-        TEST_ASSERT_LESS_THAN_UINT32_LOGGER(   (xExpectedDelay + xAllowableMargin), xActualDelay, logger );
+        TEST_ASSERT_GREATER_OR_EQUAL_UINT32( xExpectedDelay, xActualDelay );
+        TEST_ASSERT_LESS_THAN_UINT32((xExpectedDelay + xAllowableMargin), xActualDelay );
     }
 } //// end of vDlyTimeQueueRecvTest()
 
 
-
-
-static void vDlyTimeQueueSendTest (TestLogger_t *logger)
+static void vDlyTimeQueueSendTest(void)
 {
     const TickType_t  uxBlockTimeBase = 10;
     TickType_t  xStartTime = 0;
@@ -123,18 +101,15 @@ static void vDlyTimeQueueSendTest (TestLogger_t *logger)
     unsigned portSHORT   idx = 0;
 
     // fill the shared queue before starting this part of test
-    for(idx=0; idx<SHARED_Q_LENGTH ; idx++)
-    {
+    for(idx=0; idx<SHARED_Q_LENGTH ; idx++) {
         qItem = possibleQItemValue[idx];
         QoperationStatus = errQUEUE_FULL;
         QoperationStatus = xQueueSend( xSharedQueue, &qItem, 0);
-        TEST_ASSERT_EQUAL_UINT32_LOGGER( pdPASS, QoperationStatus, logger );
+        TEST_ASSERT_EQUAL_UINT32(pdPASS, QoperationStatus);
     }
-
     qItem = possibleQItemValue[8];
 
-    for(idx=0; idx<uxIteration; idx++)
-    {
+    for(idx=0; idx<uxIteration; idx++) {
         QoperationStatus = pdPASS;
         xExpectedDelay = uxBlockTimeBase << idx;
         // when current task runs at here, the shared queue is already full, we call xQueueSend()
@@ -144,43 +119,34 @@ static void vDlyTimeQueueSendTest (TestLogger_t *logger)
         xEndTime   = xTaskGetTickCount();
         GET_TICKS_INTERVAL(xStartTime, xEndTime, xActualDelay);
         // the shared queue must be full therefore it should return errQUEUE_FULL
-        TEST_ASSERT_EQUAL_UINT32_LOGGER( errQUEUE_FULL, QoperationStatus, logger );
+        TEST_ASSERT_EQUAL_UINT32(errQUEUE_FULL, QoperationStatus);
         // check the estimated blocking time
-        TEST_ASSERT_GREATER_OR_EQUAL_UINT32_LOGGER( xExpectedDelay, xActualDelay, logger );
-        TEST_ASSERT_LESS_THAN_UINT32_LOGGER(   (xExpectedDelay + xAllowableMargin), xActualDelay, logger );
+        TEST_ASSERT_GREATER_OR_EQUAL_UINT32(xExpectedDelay, xActualDelay);
+        TEST_ASSERT_LESS_THAN_UINT32((xExpectedDelay + xAllowableMargin), xActualDelay);
     }
 } //// end of vDlyTimeQueueSendTest()
 
 
-
-
 static void vBlockTimePrimary(void *pvParams)
 {
-    TestLogger_t *logger = (TestLogger_t *) pvParams;
     const TickType_t  uxBlockTimeBase = 25;
-    BaseType_t  QoperationStatus = pdPASS;
-    BaseType_t  qItem = 0x0;
+    BaseType_t  QoperationStatus = pdPASS, qItem = 0x0;
     UBaseType_t SecondTaskOriginPriority  = 0x0;
     UBaseType_t PrimaryTaskOriginPriority = 0x0;
-    unsigned portSHORT   uxIteration = 3;
-    unsigned portSHORT   idx = 0;
+    unsigned portSHORT   uxIteration = 3, idx = 0;
 
     PrimaryTaskOriginPriority = uxTaskPriorityGet( NULL );
     SecondTaskOriginPriority  = uxTaskPriorityGet( xBlkTimSecondary );
     vTaskDelay( 0x1 ); // it's optional to add a bit of delay to this test
 
-    for(;;)
-    {
+    for(;;) {
         // ----- part 0 : basic delay function tests on a single task -----
         // basic vTaskDelay() and vTaskDelayUntil() tests
-        vDelayFunctionTest( logger );
-
+        vDelayFunctionTest();
         // ----- part 1 : block time test with xQueueReceive() on a single task  -----
-        vDlyTimeQueueRecvTest( logger );
-        
+        vDlyTimeQueueRecvTest();
         // ----- part 2 : block time test with xQueueSend() on a single task  -----
-        vDlyTimeQueueSendTest( logger );
-
+        vDlyTimeQueueSendTest();
         // ----- part 3 : -----
         // this task cooperates with task 2 vBlockTimeSecondary() on this part of the test
         // this task accesses the shared queue in a way that makes the task 2 always fail to
@@ -203,22 +169,20 @@ static void vBlockTimePrimary(void *pvParams)
         vTaskDelay( uxBlockTimeBase );
         ucSecondaryTaskReadyFlag = 0x0;
  
-        for(idx=0; idx<uxIteration; idx++) 
-        {
+        for(idx=0; idx<uxIteration; idx++) {
             // read item from the front of the shared queue then immediately write it to the back,
             // the queue operations below should be done & return immediately without any delay,
             QoperationStatus = xQueueReceive( xSharedQueue, &qItem, SHARED_Q_NO_BLOCK_TIME );
-            TEST_ASSERT_EQUAL_UINT32_LOGGER( pdPASS, QoperationStatus, logger );
+            TEST_ASSERT_EQUAL_UINT32(pdPASS, QoperationStatus);
             QoperationStatus = xQueueSend(    xSharedQueue, &qItem, SHARED_Q_NO_BLOCK_TIME );
-            TEST_ASSERT_EQUAL_UINT32_LOGGER( pdPASS, QoperationStatus, logger );
+            TEST_ASSERT_EQUAL_UINT32(pdPASS, QoperationStatus);
             // increase the priority of task 2, at this point task 2 should NOT take CPU control because it 
             // is supposed to be blocked at xQueueSend()
             vTaskPrioritySet( xBlkTimSecondary, PrimaryTaskOriginPriority + 1 );
             // check if task 2 was woken from xQueueSend()
-            TEST_ASSERT_EQUAL_UINT32_LOGGER( 0x0, ucSecondaryTaskReadyFlag, logger );
+            TEST_ASSERT_EQUAL_UINT32(0x0, ucSecondaryTaskReadyFlag);
             vTaskPrioritySet( xBlkTimSecondary, SecondTaskOriginPriority);
         }
-
         // task 2 will be woken due to the timeout of xQueueSend(), finally sets the ready flag to 
         // SECOND_TASK_RDY_FLAG to finish this part of the test
         while(ucSecondaryTaskReadyFlag != SECOND_TASK_RDY_FLAG)
@@ -226,19 +190,15 @@ static void vBlockTimePrimary(void *pvParams)
             vTaskDelay( uxBlockTimeBase >> 1 );
         }
         vTaskDelay( uxBlockTimeBase );
-
  
         // ----- part 4 : -----
         // similar to part 3, except task 2 will always fail to receive any item
         // from the shared queue. For explanation of each line of code please see part 3 above.
-
         // empty the shared queue before starting this part of test
-        for(idx=0; idx<SHARED_Q_LENGTH ; idx++)
-        {
+        for(idx=0; idx<SHARED_Q_LENGTH ; idx++) {
             QoperationStatus = xQueueReceive( xSharedQueue, &qItem, SHARED_Q_NO_BLOCK_TIME );
-            TEST_ASSERT_EQUAL_UINT32_LOGGER( pdPASS, QoperationStatus, logger );
+            TEST_ASSERT_EQUAL_UINT32(pdPASS, QoperationStatus);
         }
-
         ucSecondaryTaskReadyFlag = 0x0;
         vTaskResume( xBlkTimSecondary );
         while(ucSecondaryTaskReadyFlag != SECOND_TASK_RDY_FLAG)
@@ -248,34 +208,26 @@ static void vBlockTimePrimary(void *pvParams)
         vTaskDelay( uxBlockTimeBase );
         ucSecondaryTaskReadyFlag = 0x0;
 
-        for(idx=0; idx<uxIteration; idx++) 
-        {
+        for(idx=0; idx<uxIteration; idx++) {
             qItem = possibleQItemValue[idx];
             QoperationStatus = xQueueSend(    xSharedQueue, &qItem, SHARED_Q_NO_BLOCK_TIME );
-            TEST_ASSERT_EQUAL_UINT32_LOGGER( pdPASS, QoperationStatus, logger );
+            TEST_ASSERT_EQUAL_UINT32( pdPASS, QoperationStatus );
             QoperationStatus = xQueueReceive( xSharedQueue, &qItem, SHARED_Q_NO_BLOCK_TIME );
-            TEST_ASSERT_EQUAL_UINT32_LOGGER( pdPASS, QoperationStatus, logger );
+            TEST_ASSERT_EQUAL_UINT32(pdPASS, QoperationStatus);
             vTaskPrioritySet( xBlkTimSecondary, PrimaryTaskOriginPriority + 1);
-            TEST_ASSERT_EQUAL_UINT32_LOGGER( 0x0, ucSecondaryTaskReadyFlag, logger );
+            TEST_ASSERT_EQUAL_UINT32(0x0, ucSecondaryTaskReadyFlag);
             ////TEST_COUNT_ERROR_NE( ucSecondaryTaskReadyFlag, 0x0, error_flag_ptr ); 
             vTaskPrioritySet( xBlkTimSecondary, SecondTaskOriginPriority);
         }
-
-        while(ucSecondaryTaskReadyFlag != SECOND_TASK_RDY_FLAG)
-        {
+        while(ucSecondaryTaskReadyFlag != SECOND_TASK_RDY_FLAG) {
             vTaskDelay( uxBlockTimeBase >> 1 );
         }
         vTaskDelay( uxBlockTimeBase );
-
     } //// end of the outer infinite loop
 } //// end of vBlockTimePrimary()
 
 
-
-
-static void vBlockTimeSecondary(void *pvParams)
-{
-    TestLogger_t *logger = (TestLogger_t *) pvParams;
+static void vBlockTimeSecondary(void *pvParams) {
     const TickType_t  uxBlockTimeBase = 140;
     TickType_t  xActualDelay = 0;
     BaseType_t  QoperationStatus = pdPASS;
@@ -300,11 +252,10 @@ static void vBlockTimeSecondary(void *pvParams)
         // estimate blocking time when this task is woken from the xQueueSend() above.
         GET_TICKS_INTERVAL(xStartTime, xEndTime, xActualDelay);
         // the shared queue must be full therefore xQueueSend() should return errQUEUE_FULL 
-        TEST_ASSERT_EQUAL_UINT32_LOGGER( errQUEUE_FULL, QoperationStatus, logger );
+        TEST_ASSERT_EQUAL_UINT32(errQUEUE_FULL, QoperationStatus);
         // check if the estimated blocking time is out of range
-        TEST_ASSERT_GREATER_OR_EQUAL_UINT32_LOGGER( uxBlockTimeBase, xActualDelay, logger );
-        TEST_ASSERT_LESS_THAN_UINT32_LOGGER(   (uxBlockTimeBase + xAllowableMargin), xActualDelay, logger );
-
+        TEST_ASSERT_GREATER_OR_EQUAL_UINT32(uxBlockTimeBase, xActualDelay);
+        TEST_ASSERT_LESS_THAN_UINT32((uxBlockTimeBase + xAllowableMargin), xActualDelay);
         // set the ready flag again 
         ucSecondaryTaskReadyFlag = SECOND_TASK_RDY_FLAG;
         vTaskSuspend( NULL );
@@ -317,9 +268,9 @@ static void vBlockTimeSecondary(void *pvParams)
         QoperationStatus = xQueueReceive( xSharedQueue, &qItem, uxBlockTimeBase );
         xEndTime = xTaskGetTickCount();
         GET_TICKS_INTERVAL(xStartTime, xEndTime, xActualDelay);
-        TEST_ASSERT_EQUAL_UINT32_LOGGER( errQUEUE_EMPTY, QoperationStatus, logger );
-        TEST_ASSERT_GREATER_OR_EQUAL_UINT32_LOGGER( uxBlockTimeBase, xActualDelay, logger );
-        TEST_ASSERT_LESS_THAN_UINT32_LOGGER(       (uxBlockTimeBase + xAllowableMargin), xActualDelay, logger );
+        TEST_ASSERT_EQUAL_UINT32(errQUEUE_EMPTY, QoperationStatus);
+        TEST_ASSERT_GREATER_OR_EQUAL_UINT32(uxBlockTimeBase, xActualDelay);
+        TEST_ASSERT_LESS_THAN_UINT32((uxBlockTimeBase + xAllowableMargin), xActualDelay);
 
         // set the ready flag again to make task 1 iterate whole test procedures again.
         ucSecondaryTaskReadyFlag = SECOND_TASK_RDY_FLAG;
@@ -327,16 +278,13 @@ static void vBlockTimeSecondary(void *pvParams)
 } //// end of vBlockTimeSecondary()
 
 
-
-
 void vStartBlockTimeTasks( UBaseType_t uxPriority )
 {
-    const UBaseType_t    taskPriority[NUM_OF_TASKS] = { 
-                                                         (UBaseType_t) ((uxPriority+1) | portPRIVILEGE_BIT),
-                                                         (UBaseType_t) (uxPriority | portPRIVILEGE_BIT),
-                                                      };
+    const UBaseType_t    taskPriority[NUM_OF_TASKS] = {
+        (UBaseType_t) ((uxPriority+1) | portPRIVILEGE_BIT),
+        (UBaseType_t) (uxPriority | portPRIVILEGE_BIT),
+    };
     StackType_t     *stackMemSpace[NUM_OF_TASKS] ;
-    TestLogger_t    *tlogger[2];
     BaseType_t       xState; 
     portSHORT        idx;
 
@@ -348,20 +296,16 @@ void vStartBlockTimeTasks( UBaseType_t uxPriority )
         vQueueAddToRegistry( xSharedQueue, "Block_Time_Queue");
     #endif //// end of configQUEUE_REGISTRY_SIZE
 
-    tlogger[0] = xRegisterNewTestLogger( __FILE__ , "blocking time test -- primary task" );
-    tlogger[1] = xRegisterNewTestLogger( __FILE__ , "blocking time test -- secondary task" );
     stackMemSpace[0] = (StackType_t *) pvPortMalloc(sizeof(StackType_t) * intgSTACK_SIZE );
     stackMemSpace[1] = (StackType_t *) pvPortMalloc(sizeof(StackType_t) * intgSTACK_SIZE );
     // internally create structure to collect parameters feeding to task creating function
     TaskParameters_t tsk1params = {
-        vBlockTimePrimary, "BlkTimPrim", intgSTACK_SIZE, (void *)tlogger[0],
+        vBlockTimePrimary, "BlkTimPrim", intgSTACK_SIZE, (void *)NULL,
         taskPriority[0], stackMemSpace[0], 
-        // leave MPU regions uninitialized
-    }; 
+    }; // leave MPU regions uninitialized
     TaskParameters_t tsk2params = {
-        vBlockTimeSecondary, "BlkTimSec", intgSTACK_SIZE, (void *)tlogger[1],
+        vBlockTimeSecondary, "BlkTimSec", intgSTACK_SIZE, (void *)NULL,
         taskPriority[1], stackMemSpace[1], 
-        // leave MPU regions uninitialized
     }; 
     // default value to xRegions 
     for(idx=0; idx<portNUM_CONFIGURABLE_REGIONS; idx++)
@@ -378,4 +322,3 @@ void vStartBlockTimeTasks( UBaseType_t uxPriority )
     xState = xTaskCreateRestricted( (const TaskParameters_t * const)&tsk2params, &xBlkTimSecondary );
     configASSERT( xState == pdPASS );
 } //// end of vStartBlockTimeTasks
-

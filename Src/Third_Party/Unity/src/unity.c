@@ -15,8 +15,7 @@ void UNITY_OUTPUT_CHAR(int);
 
 // In Unity C unit test, when assertion failure occurs in somewhere of a test case, it will abort
 // the rest of the test case, then jump to next test case.
-// Since we are going to extend Unity for integration testing, we don't need these abort function
-// when running integration tests.
+// In this applicaiton, the abort function is no longer necessary in integration tests.
 #ifdef UNIT_TEST
     /* Helpful macros for us to use here in Assert functions */
     #define UNITY_FAIL_AND_BAIL   { Unity.CurrentTestFailed  = 1; UNITY_OUTPUT_FLUSH(); TEST_ABORT(); }
@@ -28,7 +27,7 @@ void UNITY_OUTPUT_CHAR(int);
     #define RETURN_IF_FAIL_OR_IGNORE 
 #endif // end of UNIT_TEST
 
-struct UNITY_STORAGE_T  Unity;
+struct UNITY_STORAGE_T  Unity = {0};
 TestLogger_t      *currUnitTestLogger ;
 
 #ifdef UNITY_OUTPUT_COLOR
@@ -1668,12 +1667,16 @@ UNITY_INTERNAL_PTR UnityDoubleToPtr(const double num)
  *-----------------------------------------------*/
 
 /*-----------------------------------------------*/
-void UnityFail(const char* msg, const UNITY_LINE_TYPE line, TESTLOGGER_COMPARISON_T compare_option )
-{
+void UnityFail(
+    const char* msg,
+    const UNITY_LINE_TYPE line,
+    TESTLOGGER_COMPARISON_T compare_option
+) {
     RETURN_IF_FAIL_OR_IGNORE;
+    TestLogger_t* logger = NULL; // TODO, add logger for each failure point
+    // TestLogger_t* logger = xRegisterNewTestLogger(__FILE__, msg);
 
-    RECORD_TEST_FAIL_UINT32( currUnitTestLogger, line,  
-                            compare_option, NULL, NULL );
+    RECORD_TEST_FAIL_UINT32( logger, line, compare_option, NULL, NULL );
     //// UnityTestResultsBegin(Unity.TestFile, line);
     //// UnityPrint(UnityStrFail);
     //// if (msg != NULL)

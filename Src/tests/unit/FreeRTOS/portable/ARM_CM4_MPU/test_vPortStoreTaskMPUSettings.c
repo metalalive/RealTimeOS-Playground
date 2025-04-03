@@ -95,7 +95,7 @@ TEST( vPortStoreTaskMPUSettings , with_given_region )
                                       | (MPU_RASR_SIZE_Msk & (prvMPUregionSizeEncode(ulRegionSizeInBytes) << MPU_RASR_SIZE_Pos))
                                       |  MPU_RASR_ENABLE_Msk  ;
 
-    vPortStoreTaskMPUSettings(actual_value, &xMemRegion, ulMockStackMemory, MOCK_STACK_DEPTH);
+    vPortStoreTaskMPUSettings(actual_value, xMemRegion, ulMockStackMemory, MOCK_STACK_DEPTH);
     for(idx=0; idx<(portNUM_CONFIGURABLE_REGIONS + 1) ; idx++) 
     {
         TEST_ASSERT_EQUAL_UINT32( expected_value->xRegion[idx].RBAR , actual_value->xRegion[idx].RBAR );
@@ -119,7 +119,7 @@ TEST( vPortStoreTaskMPUSettings , with_given_region )
     expected_value->xRegion[2].RBAR  = MPU_RBAR_VALID_Msk | (portFIRST_CONFIGURABLE_REGION + 1);
     expected_value->xRegion[2].RASR  = 0x0 ;
 
-    vPortStoreTaskMPUSettings(actual_value, &xMemRegion, ulMockStackMemory, MOCK_STACK_DEPTH);
+    vPortStoreTaskMPUSettings(actual_value, xMemRegion, ulMockStackMemory, MOCK_STACK_DEPTH);
 
     for(idx=0; idx<(portNUM_CONFIGURABLE_REGIONS + 1) ; idx++) 
     {

@@ -15,58 +15,37 @@ typedef struct {
     TickType_t            xBlockTime;
     // shared variables used in this test
     volatile UBaseType_t *pulSharedVariable;
-    // for logging assertion failure
-    TestLogger_t         *logger; 
 } smphrParamStruct;
 
 // decalre parameter structure that can be accessed by interrupt and  task
 static volatile smphrParamStruct *semParams = NULL;
 
 
-void vBinSemphrCase2ISR1( void )
-{
-    SemaphoreHandle_t     xSemphr            ; 
-    volatile UBaseType_t *pulSharedVariable  ;
-    TestLogger_t         *logger             ;
-    BaseType_t            pxHPtaskWoken      ;
-
-    xSemphr            = semParams->xSemphr ; 
-    pulSharedVariable  = semParams->pulSharedVariable ;
-    logger             = semParams->logger;
-    pxHPtaskWoken = pdFALSE;
+void vBinSemphrCase2ISR1(void) {
+    SemaphoreHandle_t     xSemphr = semParams->xSemphr ; 
+    volatile UBaseType_t *pulSharedVariable = semParams->pulSharedVariable ;
+    BaseType_t  pxHPtaskWoken = pdFALSE;
     if ((*pulSharedVariable) != BSEM_SHR_VAR_ISR_FLAG) {
-        TEST_ASSERT_EQUAL_UINT32_LOGGER( BSEM_SHR_VAR_TSK_FLAG, (*pulSharedVariable), logger );
+        TEST_ASSERT_EQUAL_UINT32(BSEM_SHR_VAR_TSK_FLAG, (*pulSharedVariable));
         *pulSharedVariable = BSEM_SHR_VAR_ISR_FLAG;
         xSemaphoreGiveFromISR( xSemphr, &pxHPtaskWoken );
         portYIELD_FROM_ISR(pxHPtaskWoken);
     }
-} //// end of vBinSemphrCase2ISR1()
+}
 
-
-
-
-static void vBinSmphrKs2Taker(void *pvParams)
-{
+static void vBinSmphrKs2Taker(void *pvParams) {
     smphrParamStruct *lclsemParams = (smphrParamStruct *) pvParams;
     SemaphoreHandle_t     xSemphr             = lclsemParams->xSemphr ; 
     TickType_t            xBlockTime          = lclsemParams->xBlockTime ;
     volatile UBaseType_t *pulSharedVariable   = lclsemParams->pulSharedVariable ;
-    TestLogger_t         *logger              = semParams->logger;
-    BaseType_t   semOpsStatus;
-
-    for(;;)
-    {
-        semOpsStatus = xSemaphoreTake( xSemphr, xBlockTime );
-        if(semOpsStatus == pdPASS)
-        {
-            TEST_ASSERT_EQUAL_UINT32_LOGGER( BSEM_SHR_VAR_ISR_FLAG, (*pulSharedVariable), logger );
+    for(;;) {
+        BaseType_t semOpsStatus = xSemaphoreTake(xSemphr, xBlockTime);
+        if(semOpsStatus == pdPASS) {
+            TEST_ASSERT_EQUAL_UINT32(BSEM_SHR_VAR_ISR_FLAG, (*pulSharedVariable));
             *pulSharedVariable = BSEM_SHR_VAR_TSK_FLAG;
         }
     }
-} //// end of vBinSmphrKs2Taker()
-
-
-
+}
 
 void vStartBinSemphrCase2( UBaseType_t uxPriority )
 {
@@ -84,7 +63,6 @@ void vStartBinSemphrCase2( UBaseType_t uxPriority )
     configASSERT( semParams->pulSharedVariable );
     *(semParams->pulSharedVariable) = BSEM_SHR_VAR_TSK_FLAG;
     semParams->xBlockTime  = portMAX_DELAY;
-    semParams->logger      = xRegisterNewTestLogger( __FILE__ , "Binary semaphore test (case 2)");
     
     TaskParameters_t tskparams = {
         vBinSmphrKs2Taker, "BSemKs2Taker", intgSTACK_SIZE, (void *)semParams,
@@ -100,6 +78,5 @@ void vStartBinSemphrCase2( UBaseType_t uxPriority )
     }
     xState = xTaskCreateRestricted( (const TaskParameters_t * const)&tskparams, NULL );
     configASSERT( xState == pdPASS );
-    //// xTaskCreate( vBinSmphrKs2Taker, "BSemKs2Taker", intgSTACK_SIZE, (void *)semParams, uxPriority, NULL);
-} //// end of vStartBinSemphrCase2()
-
+    // xTaskCreate( vBinSmphrKs2Taker, "BSemKs2Taker", intgSTACK_SIZE, (void *)semParams, uxPriority, NULL);
+} // end of vStartBinSemphrCase2()

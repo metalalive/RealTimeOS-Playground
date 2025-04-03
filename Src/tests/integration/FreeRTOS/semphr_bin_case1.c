@@ -6,7 +6,6 @@
 // for  internal data structure, representing size of the allocated block.
 #define  intgSTACK_SIZE      (( unsigned portSHORT ) 0x3e)
 
-
 // the data structure below is used only for passing parameters to the tasks in this tests
 typedef struct {
     // the queue used by the tasks
@@ -15,28 +14,22 @@ typedef struct {
     TickType_t            xBlockTime;
     // shared variables used in this test
     volatile UBaseType_t *pulSharedVariable;
-    // for logging assertion failure
-    TestLogger_t         *logger; 
 } smphrParamStruct;
-
-
 
 static void vBinSmphrKs1Giver(void *pvParams)
 {
     smphrParamStruct *semParams = (smphrParamStruct *) pvParams;
     SemaphoreHandle_t     xSemphr            = semParams->xSemphr ; 
     TickType_t            xBlockTime         = semParams->xBlockTime ;
-    TestLogger_t         *logger             = semParams->logger;
     volatile UBaseType_t *pulSharedVariable  = NULL ;
 
     taskENTER_CRITICAL();
     pulSharedVariable  = semParams->pulSharedVariable ;
     taskEXIT_CRITICAL();
     UBaseType_t  pulSharedVariableBackup = *pulSharedVariable;
-    UBaseType_t  idx  =  0;
+    UBaseType_t  idx = 0;
 
-    for (;;)
-    {
+    for(;;) {
         // following lines of code ensure that the taker gets blocked on xSemaphoreTake()
         while ((*pulSharedVariable) != 0) {
             taskYIELD(); 
@@ -46,27 +39,21 @@ static void vBinSmphrKs1Giver(void *pvParams)
         taskYIELD();
         
         // counts up the shared variable
-        for (idx=1; idx<=pulSharedVariableBackup; idx++)
-        {
+        for (idx=1; idx<=pulSharedVariableBackup; idx++) {
              taskENTER_CRITICAL();
             *pulSharedVariable += 1;
              taskEXIT_CRITICAL();
-            TEST_ASSERT_EQUAL_UINT32_LOGGER( idx, (*pulSharedVariable), logger );
-        }
-        // give the semaphore, let the other task take it .
+            TEST_ASSERT_EQUAL_UINT32(idx, (*pulSharedVariable));
+        } // give the semaphore, let the other task take it .
         xSemaphoreGive( xSemphr );
     }
-} //// end of vBinSmphrKs1Giver
-
-
-
+} // end of vBinSmphrKs1Giver
 
 static void vBinSmphrKs1Taker(void *pvParams)
 {
     smphrParamStruct *semParams = (smphrParamStruct *) pvParams;
     SemaphoreHandle_t     xSemphr            = semParams->xSemphr ; 
     TickType_t            xBlockTime         = semParams->xBlockTime ;
-    TestLogger_t         *logger             = semParams->logger;
     volatile UBaseType_t *pulSharedVariable  = NULL ;
 
     taskENTER_CRITICAL();
@@ -77,8 +64,7 @@ static void vBinSmphrKs1Taker(void *pvParams)
     UBaseType_t  idx  =  0;
     BaseType_t   semOpsStatus;
 
-    for (;;)
-    {
+    for(;;) {
         taskENTER_CRITICAL();
         *pulSharedVariable = 0;
         taskEXIT_CRITICAL();
@@ -94,40 +80,34 @@ static void vBinSmphrKs1Taker(void *pvParams)
         }
         // check value of shared variable
         pulCurrentPossibleValue = pulSharedVariableBackup;
-        TEST_ASSERT_EQUAL_UINT32_LOGGER( pulCurrentPossibleValue, (*pulSharedVariable), logger );
+        TEST_ASSERT_EQUAL_UINT32(pulCurrentPossibleValue, (*pulSharedVariable));
         // counts up the shared variable then the the value again
-        for (idx=1; idx<=pulSharedVariableBackup; idx++)
-        {
+        for (idx=1; idx<=pulSharedVariableBackup; idx++) {
              taskENTER_CRITICAL();
             *pulSharedVariable += 1;
              taskEXIT_CRITICAL();
         }
         taskYIELD();
         pulCurrentPossibleValue = pulSharedVariableBackup << 1;
-        TEST_ASSERT_EQUAL_UINT32_LOGGER( pulCurrentPossibleValue, (*pulSharedVariable), logger );
+        TEST_ASSERT_EQUAL_UINT32(pulCurrentPossibleValue, (*pulSharedVariable));
         taskYIELD();
     }
-} //// end of vBinSmphrKs1Taker()
-
-
+} // end of vBinSmphrKs1Taker()
 
 
 void vStartBinSemphrCase1( UBaseType_t uxPriority )
 {
     smphrParamStruct   *semParams[ NUM_OF_TASKS / 2 ];
     const UBaseType_t   expected_init_shared_var[NUM_OF_TASKS / 2] = {13, 47};
-    void   (*pvTaskFuncs[NUM_OF_TASKS])(void *) = {
-                                                      vBinSmphrKs1Giver,  vBinSmphrKs1Taker,
-                                                      vBinSmphrKs1Giver,  vBinSmphrKs1Taker,
-                                                  };
-    const portCHAR      pcTaskName[NUM_OF_TASKS][16] = {
-                                                         "BSemKs1Giver1","BSemKs1Taker1",
-                                                         "BSemKs1Giver2","BSemKs1Taker2",
-                                                       };
-    StackType_t        *stackMemSpace[NUM_OF_TASKS] ;
-    BaseType_t          xState; 
-    unsigned portSHORT  idx;
-    unsigned portSHORT  jdx;
+    void  (*pvTaskFuncs[NUM_OF_TASKS])(void *) = {
+        vBinSmphrKs1Giver,  vBinSmphrKs1Taker, vBinSmphrKs1Giver,  vBinSmphrKs1Taker,
+    };
+    const portCHAR pcTaskName[NUM_OF_TASKS][16] = {
+        "BSemKs1Giver1","BSemKs1Taker1", "BSemKs1Giver2","BSemKs1Taker2",
+    };
+    StackType_t        *stackMemSpace[NUM_OF_TASKS] = {0};
+    BaseType_t          xState;
+    unsigned portSHORT  idx, jdx;
 
     for (idx=0; idx<NUM_OF_TASKS; idx++) {
         stackMemSpace[idx] = (StackType_t *) pvPortMalloc( sizeof(StackType_t) * intgSTACK_SIZE );
@@ -143,10 +123,6 @@ void vStartBinSemphrCase1( UBaseType_t uxPriority )
     configASSERT( semParams[1]->xSemphr );
     semParams[0]->xBlockTime = 0;
     semParams[1]->xBlockTime = 100;
-    semParams[0]->logger = xRegisterNewTestLogger( __FILE__ , "Binary semaphore test (case 1) -- scenario #1");
-    semParams[1]->logger = xRegisterNewTestLogger( __FILE__ , "Binary semaphore test (case 1) -- scenario #2");
-    configASSERT( semParams[0]->logger );
-    configASSERT( semParams[1]->logger );
     semParams[0]->pulSharedVariable = (UBaseType_t *) pvPortMalloc( sizeof(UBaseType_t) );
     semParams[1]->pulSharedVariable = (UBaseType_t *) pvPortMalloc( sizeof(UBaseType_t) );
     configASSERT( semParams[0]->pulSharedVariable );
@@ -157,11 +133,9 @@ void vStartBinSemphrCase1( UBaseType_t uxPriority )
     // first 2 tasks work with the same parameter structure semParams[0], the last 2 work with semParams[1]
     for (idx=0; idx<NUM_OF_TASKS; idx++) {
         TaskParameters_t tskparams = {
-            pvTaskFuncs[idx], &pcTaskName[idx], intgSTACK_SIZE, (void *)semParams[ idx/2 ],
+            pvTaskFuncs[idx], pcTaskName[idx], intgSTACK_SIZE, (void *)semParams[ idx/2 ],
             (uxPriority | portPRIVILEGE_BIT), stackMemSpace[idx],
-            // leave MPU regions uninitialized
         };
-        // default value to unused MPU regions 
         for(jdx=0; jdx<portNUM_CONFIGURABLE_REGIONS; jdx++)
         {
             tskparams.xRegions[jdx].pvBaseAddress   = NULL;
@@ -171,6 +145,4 @@ void vStartBinSemphrCase1( UBaseType_t uxPriority )
         xState = xTaskCreateRestricted( (const TaskParameters_t * const)&tskparams, NULL );
         configASSERT( xState == pdPASS );
     }
-} //// end of vStartBinSemphrCase1()
-
-
+} // end of vStartBinSemphrCase1()

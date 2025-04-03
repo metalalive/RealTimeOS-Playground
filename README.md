@@ -1,51 +1,51 @@
-# FreeRTOS-STM32-HAL-integration
+# Real-Time OS Playground
+This repository is for integration experiment with variety of hardware platforms and real-time operating systems
 
-STM32CubeMX hasn't supported up-to-date version of FreeRTOS by the time I created this project, therefore I decided to get my hands dirty to work on my FreeRTOS port for STM32F4 Nucleo, which is the development board I worked with in this port.
+### Supported platforms
+|device|CPU|RTOS|
+|------|---|----|
+|STM32F446RE Nucleo|ARM Cortex-M4|[FreeRTOS v10.2.0](https://github.com/FreeRTOS/FreeRTOS-Kernel/tree/V10.2.0)|
 
-### Working environment
-* STM32F446RE Nucleo development board, 
-  * which includes ARM Cortex-M4 MCU, and useful onboard debugger.
+## Build
+### Prerequisite
+|name|version|description|
+|----|-------|-----------|
+|[ARM GNU toolchain](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads)| 14.2 release 1 |for cross-compiling and debugging ARM CPU dev board|
+|[OpenOCD](https://openocd.org/)| 0.12.0 |local server for debugging target dev board|
 
-* FreeRTOS v10.2
-
-* C Unity
-  * testing framework written in C, in this project I made modification to Unity for both of unit testing & integration testing.
-
-* GCC toolchain
-  * `arm-none-eabi-gcc` v5.4.1 20160919 (release), download the package from [here]
-
-* OpenOCD
-  * `openocd` v0.10.0, Building openOCD from source is highly recommended.
-
-* GDB
-  * `gdb-multiarch` v7.7.1.
+### Optional Dependencies
+|name|version|description|
+|----|-------|-----------|
+|[ST-Link Tool](https://www.st.com/en/development-tools/stsw-link004.html)| 1.8.0 |flashing tools for STM32 dev boards|
 
 
+Build test image. The commands below should include base path to toolchain e.g. `ARM_TOOLCHAIN_BASEPATH=/PATH/TO/TOOLCHAIN` depending on your target board.
+```bash
+make UNIT_TEST=yes ;
+make INTEGRATION_TEST=yes ;
+```
 
-### Quick Start
+Clean up all built images
+```bash
+make clean
+```
 
- Options for building, running, and debugging the image
+## Load image, Run, and Debug
+Launch debug server after interfacing debug hardware to your target board
+```bash
+make dbg_server
+```
 
- * ```make  UNIT_TEST=yes```
-   * Build image to run unit tests.
-
- * ```make  INTEGRATION_TEST=yes```
-   * Build image to run integration tests.
-
- * ```make clean```
-   * clean up the built image
-
- * ```make dbg_server  OPENOCD_HOME=/PATH/TO/YOUR_OPENOCD```
-   * launch debug server, we use OpenOCD (v0.10.0) here . 
-   * Note that superuser permission would be required when running openOCD, the superuser command differs & depends on your working Operating System. 
-
- * ```make dbg_client```
-   * Before starting GDB client, please open `./test_utility.gdb` and modify the image path in your case, by going to line 73, modify `file <YOUR_PATH_TO_TEST_IMAGE>` .
-   * Launch GDB client to load image, set breakpoints, watchpoints for execution. We use gdb-multiarch   (v7.7.1 or later) at here. 
+Launch debug client
+```bash
+make dbg_client ARM_TOOLCHAIN_BASEPATH=/PATH/TO/TOOLCAHIN
+```
+- Remind the debugger to use depends on your target board
+- Note you can open `./test_utility.gdb` and modify the image name and path in your case, by modifying the command `file <YOUR_PATH_TO_TEST_IMAGE>` , also set up extra breakpoints for your requirement.
 
 
-### Test Report
-To see the test result, type command `report_test_result` in the GDB client console, you can see number of test cases running on the target board, and how many of them failed. 
+### Test Result Check
+To see the unit-test result, type command `report_test_result` in the GDB client console, you can see number of test cases running on the target board, and how many of them failed. 
 
 For example, the text report below shows that we have 36 test cases and none of the tests failed.
 ```
@@ -80,12 +80,5 @@ $24 = "[number of failure]:"
 $25 = 1
 ```
 
-
-### Code Structure
-
-* `./Driver` : contains STM32 HAL C API functions.
-
-* `./Inc`, `./Src` : where FreeRTOS code, testing code are located
-
-
+For integration test, you can interupt (by pressing keys `Ctrl + C`) at any time to see whether any task has been hitting assertion failure.
 
