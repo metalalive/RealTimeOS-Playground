@@ -21,7 +21,7 @@ static void vCompetingIntMathTask1(void *pvParams) {
         // temporarily give up the CPU control, 
         // later on it will come back to see the calculation result is still as expected.
         taskYIELD();
-        TEST_ASSERT_EQUAL_INT32(expectedVal, actualVal);
+        configASSERT(expectedVal == actualVal);
         actualVal  = 0;
     }
 }
@@ -79,7 +79,7 @@ static void vCompetingIntMathTask2(void *pvParams) {
         // temporarily give up the CPU control, later on after context switches,
         // CPU will come back to see the calculation result is still as expected.
         taskYIELD();
-        TEST_ASSERT_EQUAL_INT32(expectedVal, actualVal);
+        configASSERT(expectedVal == actualVal);
     }
     #undef TEST_ARRAY_LENGTH 
 } // end of vCompetingIntMathTask2

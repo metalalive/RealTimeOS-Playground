@@ -52,7 +52,7 @@ StackType_t *pxPortTestRecoverExptnStack( StackType_t *pxTopOfStack, TaskFunctio
    *currSP = 0x0;
     currSP--;
     currSP -= 4;
-   *currSP = (StackType_t *) pvParams;
+   *currSP = (StackType_t) pvParams;
     return currSP;
 } // end of pxPortTestRecoverExptnStack
 

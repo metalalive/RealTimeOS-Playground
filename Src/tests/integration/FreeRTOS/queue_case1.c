@@ -26,7 +26,7 @@ static void vQTestKs1Producer(void *pvParams) {
         qItem++ ;
         QopsStatus = errQUEUE_FULL;
         QopsStatus = xQueueSendToBack( xQueue, (void *)&qItem, xBlockTime );
-        TEST_ASSERT_EQUAL_INT32(pdPASS, QopsStatus);
+        configASSERT(pdPASS == QopsStatus);
     }
 } // end of vQTestKs1Producer
 
@@ -39,7 +39,7 @@ static void vQTestKs1Consumer(void *pvParams) {
         BaseType_t QopsStatus = errQUEUE_EMPTY;
         QopsStatus = xQueueReceive( xQueue, (void *)&qItemActual, xBlockTime);
         if (QopsStatus == pdPASS) {
-            TEST_ASSERT_EQUAL_UINT16(qItemActual, qItemExpected);
+            configASSERT(qItemActual == qItemExpected);
             qItemExpected++;
         }
     }

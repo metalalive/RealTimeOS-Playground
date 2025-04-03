@@ -41,7 +41,6 @@ extern "C" {
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_hal.h"
-#include "tests/testlogger.h"
 #include "tests/integration/FreeRTOS/test_runner.h"
 
 /* Private includes ----------------------------------------------------------*/

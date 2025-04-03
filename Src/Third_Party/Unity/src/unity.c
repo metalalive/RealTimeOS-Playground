@@ -4,6 +4,7 @@
     [Released under MIT License. Please refer to license.txt for details]
 ============================================================================ */
 
+#include "unity_internals.h"
 #define UNITY_INCLUDE_SETUP_STUBS
 #include "unity.h"
 #include <stddef.h>
@@ -16,19 +17,15 @@ void UNITY_OUTPUT_CHAR(int);
 // In Unity C unit test, when assertion failure occurs in somewhere of a test case, it will abort
 // the rest of the test case, then jump to next test case.
 // In this applicaiton, the abort function is no longer necessary in integration tests.
-#ifdef UNIT_TEST
-    /* Helpful macros for us to use here in Assert functions */
-    #define UNITY_FAIL_AND_BAIL   { Unity.CurrentTestFailed  = 1; UNITY_OUTPUT_FLUSH(); TEST_ABORT(); }
-    #define UNITY_IGNORE_AND_BAIL { Unity.CurrentTestIgnored = 1; UNITY_OUTPUT_FLUSH(); TEST_ABORT(); }
-    #define RETURN_IF_FAIL_OR_IGNORE if (Unity.CurrentTestFailed || Unity.CurrentTestIgnored) return
-#else
-    #define UNITY_FAIL_AND_BAIL     
-    #define UNITY_IGNORE_AND_BAIL  
-    #define RETURN_IF_FAIL_OR_IGNORE 
-#endif // end of UNIT_TEST
+#ifndef UNIT_TEST
+    #error "Unity cannot be used with integration tests"
+#endif
+/* Helpful macros for us to use here in Assert functions */
+#define UNITY_FAIL_AND_BAIL   { Unity.CurrentTestFailed  = 1; UNITY_OUTPUT_FLUSH(); TEST_ABORT(); }
+#define UNITY_IGNORE_AND_BAIL { Unity.CurrentTestIgnored = 1; UNITY_OUTPUT_FLUSH(); TEST_ABORT(); }
+#define RETURN_IF_FAIL_OR_IGNORE if (Unity.CurrentTestFailed || Unity.CurrentTestIgnored) return
 
 struct UNITY_STORAGE_T  Unity = {0};
-TestLogger_t      *currUnitTestLogger ;
 
 #ifdef UNITY_OUTPUT_COLOR
 static const char UnityStrOk[]                     = "\033[42mOK\033[00m";
@@ -41,37 +38,9 @@ static const char UnityStrPass[]                   = "PASS";
 static const char UnityStrFail[]                   = "FAIL";
 static const char UnityStrIgnore[]                 = "IGNORE";
 #endif
-static const char UnityStrNull[]                   = "NULL";
-static const char UnityStrSpacer[]                 = ". ";
-static const char UnityStrExpected[]               = " Expected ";
-static const char UnityStrWas[]                    = " Was ";
-static const char UnityStrGt[]                     = " to be greater than ";
-static const char UnityStrLt[]                     = " to be less than ";
-static const char UnityStrOrEqual[]                = "or equal to ";
-static const char UnityStrElement[]                = " Element ";
-static const char UnityStrByte[]                   = " Byte ";
-static const char UnityStrMemory[]                 = " Memory Mismatch.";
-static const char UnityStrDelta[]                  = " Values Not Within Delta ";
-static const char UnityStrPointless[]              = " You Asked Me To Compare Nothing, Which Was Pointless.";
-static const char UnityStrNullPointerForExpected[] = " Expected pointer to be NULL";
-static const char UnityStrNullPointerForActual[]   = " Actual pointer was NULL";
-#ifndef UNITY_EXCLUDE_FLOAT
-static const char UnityStrNot[]                    = "Not ";
-static const char UnityStrInf[]                    = "Infinity";
-static const char UnityStrNegInf[]                 = "Negative Infinity";
-static const char UnityStrNaN[]                    = "NaN";
-static const char UnityStrDet[]                    = "Determinate";
-static const char UnityStrInvalidFloatTrait[]      = "Invalid Float Trait";
-#endif
 const char UnityStrErrFloat[]                      = "Unity Floating Point Disabled";
 const char UnityStrErrDouble[]                     = "Unity Double Precision Disabled";
 const char UnityStrErr64[]                         = "Unity 64-bit Support Disabled";
-static const char UnityStrBreaker[]                = "-----------------------";
-static const char UnityStrResultsTests[]           = " Tests ";
-static const char UnityStrResultsFailures[]        = " Failures ";
-static const char UnityStrResultsIgnored[]         = " Ignored ";
-static const char UnityStrDetail1Name[]            = UNITY_DETAIL1_NAME " ";
-static const char UnityStrDetail2Name[]            = " " UNITY_DETAIL2_NAME " ";
 
 /*-----------------------------------------------
  * Pretty Printers & Test Result Output Handlers
@@ -150,120 +119,6 @@ void UnityPrint(const char* string)
         }
     }
 }
-
-/*-----------------------------------------------*/
-#ifdef UNITY_INCLUDE_PRINT_FORMATTED
-void UnityPrintFormatted(const char* format, ...)
-{
-    const char* pch = format;
-    va_list va;
-    va_start(va, format);
-
-    if (pch != NULL)
-    {
-        while (*pch)
-        {
-            /* format identification character */
-            if (*pch == '%')
-            {
-                pch++;
-
-                if (pch != NULL)
-                {
-                    switch (*pch)
-                    {
-                        case 'd':
-                        case 'i':
-                            {
-                                const int number = va_arg(va, int);
-                                UnityPrintNumber((UNITY_INT)number);
-                                break;
-                            }
-#ifndef UNITY_EXCLUDE_FLOAT_PRINT
-                        case 'f':
-                        case 'g':
-                            {
-                                const double number = va_arg(va, double);
-                                UnityPrintFloat((UNITY_DOUBLE)number);
-                                break;
-                            }
-#endif
-                        case 'u':
-                            {
-                                const unsigned int number = va_arg(va, unsigned int);
-                                UnityPrintNumberUnsigned((UNITY_UINT)number);
-                                break;
-                            }
-                        case 'b':
-                            {
-                                const unsigned int number = va_arg(va, unsigned int);
-                                const UNITY_UINT mask = (UNITY_UINT)0 - (UNITY_UINT)1;
-                                UNITY_OUTPUT_CHAR('0');
-                                UNITY_OUTPUT_CHAR('b');
-                                UnityPrintMask(mask, (UNITY_UINT)number);
-                                break;
-                            }
-                        case 'x':
-                        case 'X':
-                        case 'p':
-                            {
-                                const unsigned int number = va_arg(va, unsigned int);
-                                UNITY_OUTPUT_CHAR('0');
-                                UNITY_OUTPUT_CHAR('x');
-                                UnityPrintNumberHex((UNITY_UINT)number, 8);
-                                break;
-                            }
-                        case 'c':
-                            {
-                                const int ch = va_arg(va, int);
-                                UnityPrintChar((const char *)&ch);
-                                break;
-                            }
-                        case 's':
-                            {
-                                const char * string = va_arg(va, const char *);
-                                UnityPrint(string);
-                                break;
-                            }
-                        case '%':
-                            {
-                                UnityPrintChar(pch);
-                                break;
-                            }
-                        default:
-                            {
-                                /* print the unknown format character */
-                                UNITY_OUTPUT_CHAR('%');
-                                UnityPrintChar(pch);
-                                break;
-                            }
-                    }
-                }
-            }
-#ifdef UNITY_OUTPUT_COLOR
-            /* print ANSI escape code */
-            else if ((*pch == 27) && (*(pch + 1) == '['))
-            {
-                pch += UnityPrintAnsiEscapeString(pch);
-                continue;
-            }
-#endif
-            else if (*pch == '\n')
-            {
-                UNITY_PRINT_EOL();
-            }
-            else
-            {
-                UnityPrintChar(pch);
-            }
-
-            pch++;
-        }
-    }
-
-    va_end(va);
-}
-#endif /* ! UNITY_INCLUDE_PRINT_FORMATTED */
 
 /*-----------------------------------------------*/
 void UnityPrintLen(const char* string, const UNITY_UINT32 length)
@@ -438,22 +293,14 @@ void UnityPrintFloat(const UNITY_DOUBLE input_number)
         UNITY_OUTPUT_CHAR('-');
         number = -number;
     }
-
     /* handle zero, NaN, and +/- infinity */
-    if (number == 0.0f)
-    {
+    if (number == 0.0f) {
         UnityPrint("0");
-    }
-    else if (isnan(number))
-    {
+    } else if (isnan(number)) {
         UnityPrint("nan");
-    }
-    else if (isinf(number))
-    {
+    } else if (isinf(number)) {
         UnityPrint("inf");
-    }
-    else
-    {
+    } else {
         UNITY_INT32 n_int = 0, n;
         int exponent = 0;
         int decimals, digits;
@@ -466,26 +313,20 @@ void UnityPrintFloat(const UNITY_DOUBLE input_number)
          * (exactly) the remaining power of 10 and perform one more
          * multiplication or division.
          */
-        if (number < 1.0f)
-        {
+        if (number < 1.0f) {
             UNITY_DOUBLE factor = 1.0f;
 
             while (number < (UNITY_DOUBLE)max_scaled / 1e10f)  { number *= 1e10f; exponent -= 10; }
             while (number * factor < (UNITY_DOUBLE)min_scaled) { factor *= 10.0f; exponent--; }
-
             number *= factor;
-        }
-        else if (number > (UNITY_DOUBLE)max_scaled)
-        {
+        } else if (number > (UNITY_DOUBLE)max_scaled) {
             UNITY_DOUBLE divisor = 1.0f;
 
             while (number > (UNITY_DOUBLE)min_scaled * 1e10f)   { number  /= 1e10f; exponent += 10; }
             while (number / divisor > (UNITY_DOUBLE)max_scaled) { divisor *= 10.0f; exponent++; }
 
             number /= divisor;
-        }
-        else
-        {
+        } else {
             /*
              * In this range, we can split off the integer part before
              * doing any multiplications.  This reduces rounding error by
@@ -546,24 +387,19 @@ void UnityPrintFloat(const UNITY_DOUBLE input_number)
         {
             UNITY_OUTPUT_CHAR('e');
 
-            if (exponent < 0)
-            {
+            if (exponent < 0) {
                 UNITY_OUTPUT_CHAR('-');
                 exponent = -exponent;
-            }
-            else
-            {
+            } else {
                 UNITY_OUTPUT_CHAR('+');
             }
 
             digits = 0;
-            while ((exponent != 0) || (digits < 2))
-            {
+            while ((exponent != 0) || (digits < 2)) {
                 buf[digits++] = (char)('0' + exponent % 10);
                 exponent /= 10;
             }
-            while (digits > 0)
-            {
+            while (digits > 0) {
                 UNITY_OUTPUT_CHAR(buf[--digits]);
             }
         }
@@ -583,12 +419,14 @@ static void UnityTestResultsBegin(const char* file, const UNITY_LINE_TYPE line)
 }
 
 /*-----------------------------------------------*/
+#if 0
 static void UnityTestResultsFailBegin(const UNITY_LINE_TYPE line)
 {
     UnityTestResultsBegin(Unity.TestFile, line);
     UnityPrint(UnityStrFail);
     UNITY_OUTPUT_CHAR(':');
 }
+#endif
 
 /*-----------------------------------------------*/
 void UnityConcludeTest(void)
@@ -614,84 +452,6 @@ void UnityConcludeTest(void)
     UNITY_FLUSH_CALL();
 }
 
-/*-----------------------------------------------*/
-static void UnityAddMsgIfSpecified(const char* msg)
-{
-    if (msg)
-    {
-        UnityPrint(UnityStrSpacer);
-#ifndef UNITY_EXCLUDE_DETAILS
-        if (Unity.CurrentDetail1)
-        {
-            UnityPrint(UnityStrDetail1Name);
-            UnityPrint(Unity.CurrentDetail1);
-            if (Unity.CurrentDetail2)
-            {
-                UnityPrint(UnityStrDetail2Name);
-                UnityPrint(Unity.CurrentDetail2);
-            }
-            UnityPrint(UnityStrSpacer);
-        }
-#endif
-        UnityPrint(msg);
-    }
-}
-
-/*-----------------------------------------------*/
-static void UnityPrintExpectedAndActualStrings(const char* expected, const char* actual)
-{
-    UnityPrint(UnityStrExpected);
-    if (expected != NULL)
-    {
-        UNITY_OUTPUT_CHAR('\'');
-        UnityPrint(expected);
-        UNITY_OUTPUT_CHAR('\'');
-    }
-    else
-    {
-        UnityPrint(UnityStrNull);
-    }
-    UnityPrint(UnityStrWas);
-    if (actual != NULL)
-    {
-        UNITY_OUTPUT_CHAR('\'');
-        UnityPrint(actual);
-        UNITY_OUTPUT_CHAR('\'');
-    }
-    else
-    {
-        UnityPrint(UnityStrNull);
-    }
-}
-
-/*-----------------------------------------------*/
-static void UnityPrintExpectedAndActualStringsLen(const char* expected,
-                                                  const char* actual,
-                                                  const UNITY_UINT32 length)
-{
-    UnityPrint(UnityStrExpected);
-    if (expected != NULL)
-    {
-        UNITY_OUTPUT_CHAR('\'');
-        UnityPrintLen(expected, length);
-        UNITY_OUTPUT_CHAR('\'');
-    }
-    else
-    {
-        UnityPrint(UnityStrNull);
-    }
-    UnityPrint(UnityStrWas);
-    if (actual != NULL)
-    {
-        UNITY_OUTPUT_CHAR('\'');
-        UnityPrintLen(actual, length);
-        UNITY_OUTPUT_CHAR('\'');
-    }
-    else
-    {
-        UnityPrint(UnityStrNull);
-    }
-}
 
 /*-----------------------------------------------
  * Assertion & Control Helpers
@@ -701,36 +461,24 @@ static void UnityPrintExpectedAndActualStringsLen(const char* expected,
 static int UnityIsOneArrayNull(UNITY_INTERNAL_PTR expected,
                                UNITY_INTERNAL_PTR actual,
                                const UNITY_LINE_TYPE lineNumber,
-                               const TestLogger_t* logger )
-                               //// const char* msg)
+                               const char* msg)
 {
-    const TestLogger_t* xlogger = logger;
     if (expected == actual) return 0; /* Both are NULL or same pointer */
-    if( xlogger==NULL ) { xlogger = currUnitTestLogger; }
 
-    /* print and return true if just expected is NULL */
-    if (expected == NULL)
-    {
-        RECORD_TEST_FAIL_UINT32 ( xlogger, lineNumber, UNITY_NOT_EQUAL_TO,
-                                  0x0,  (UNITY_UINT32)expected );
+    if (expected == NULL) {
+        Unity.CurrErr = (struct UNITY_CURR_ERR_T) {.msg=msg, .cmp=UNITY_NOT_EQUAL_TO};
         // UnityTestResultsFailBegin(lineNumber);
         // UnityPrint(UnityStrNullPointerForExpected);
         // UnityAddMsgIfSpecified(msg);
         return 1;
     }
-
-    /* print and return true if just actual is NULL */
-    if (actual == NULL)
-    {
-        RECORD_TEST_FAIL_UINT32 ( xlogger, lineNumber, 
-                                  UNITY_NOT_EQUAL_TO, 0x0, 
-                                  (UNITY_UINT32)actual );
+    if (actual == NULL) {
+        Unity.CurrErr = (struct UNITY_CURR_ERR_T) {.msg=msg, .cmp=UNITY_NOT_EQUAL_TO};
         // UnityTestResultsFailBegin(lineNumber);
         // UnityPrint(UnityStrNullPointerForActual);
         // UnityAddMsgIfSpecified(msg);
         return 1;
     }
-
     return 0; /* return false if neither is NULL */
 }
 
@@ -742,18 +490,12 @@ static int UnityIsOneArrayNull(UNITY_INTERNAL_PTR expected,
 void UnityAssertBits(const UNITY_INT mask,
                      const UNITY_INT expected,
                      const UNITY_INT actual,
-                     //// const char* msg,
-                     const TestLogger_t* logger,
+                     const char* msg,
                      const UNITY_LINE_TYPE lineNumber)
 {
     RETURN_IF_FAIL_OR_IGNORE;
-    const TestLogger_t* xlogger = logger;
-
-    if ((mask & expected) != (mask & actual))
-    {
-        if( xlogger==NULL ) { xlogger = currUnitTestLogger; }
-        // store the result to a global structure list instead of printing it out
-        RECORD_TEST_FAIL_INT( xlogger, lineNumber, UNITY_EQUAL_TO, expected, actual);
+    if ((mask & expected) != (mask & actual)) {
+        Unity.CurrErr = (struct UNITY_CURR_ERR_T) {.msg=msg, .cmp=UNITY_EQUAL_TO};
         // UnityTestResultsFailBegin(lineNumber);
         // UnityPrint(UnityStrExpected);
         // UnityPrintMask((UNITY_UINT)mask, (UNITY_UINT)expected);
@@ -767,20 +509,13 @@ void UnityAssertBits(const UNITY_INT mask,
 /*-----------------------------------------------*/
 void UnityAssertEqualNumber(const UNITY_INT expected,
                             const UNITY_INT actual,
-                            //// const char* msg,
-                            const TestLogger_t* logger,
+                            const char* msg,
                             const UNITY_LINE_TYPE lineNumber,
                             const UNITY_DISPLAY_STYLE_T style)
 {
     RETURN_IF_FAIL_OR_IGNORE;
-
-    if (expected != actual)
-    {
-        // the logger structure is passed at here for unit testing & integration testing
-        const TestLogger_t* xlogger = logger;
-        if(xlogger==NULL) { xlogger = currUnitTestLogger; }
-        // store the result to a global structure list instead of printing it out
-        RECORD_TEST_FAIL_INT( xlogger, lineNumber, UNITY_EQUAL_TO, expected, actual );
+    if (expected != actual) {
+        Unity.CurrErr = (struct UNITY_CURR_ERR_T) {.msg=msg, .cmp=UNITY_EQUAL_TO};
         //// UnityTestResultsFailBegin(lineNumber);
         //// UnityPrint(UnityStrExpected);
         //// UnityPrintNumberByStyle(expected, style);
@@ -795,8 +530,7 @@ void UnityAssertEqualNumber(const UNITY_INT expected,
 void UnityAssertGreaterOrLessOrEqualNumber(const UNITY_INT threshold,
                                            const UNITY_INT actual,
                                            const UNITY_COMPARISON_T compare,
-                                           //// const char *msg,
-                                           const TestLogger_t* logger,
+                                           const char *msg,
                                            const UNITY_LINE_TYPE lineNumber,
                                            const UNITY_DISPLAY_STYLE_T style)
 {
@@ -817,20 +551,18 @@ void UnityAssertGreaterOrLessOrEqualNumber(const UNITY_INT threshold,
         if (((UNITY_UINT)actual < (UNITY_UINT)threshold) && (compare & UNITY_GREATER_THAN)) { failed = 1; }
     }
 
-    if (failed)
-    {
-        const TestLogger_t* xlogger = logger;
-        if( xlogger==NULL ) { xlogger = currUnitTestLogger; }
-        // store the result to a global structure list instead of printing it out
-        RECORD_TEST_FAIL_INT( xlogger, lineNumber, compare, threshold, actual );
-        // UnityTestResultsFailBegin(lineNumber);
-        // UnityPrint(UnityStrExpected);
-        // UnityPrintNumberByStyle(actual, style);
-        // if (compare & UNITY_GREATER_THAN) { UnityPrint(UnityStrGt);      }
-        // if (compare & UNITY_SMALLER_THAN) { UnityPrint(UnityStrLt);      }
-        // if (compare & UNITY_EQUAL_TO)     { UnityPrint(UnityStrOrEqual); }
-        // UnityPrintNumberByStyle(threshold, style);
-        // UnityAddMsgIfSpecified(msg);
+    if (failed) {
+        Unity.CurrErr = (struct UNITY_CURR_ERR_T) {.msg=msg, .cmp=UNITY_WITHIN};
+#if 0
+        UnityTestResultsFailBegin(lineNumber);
+        UnityPrint(UnityStrExpected);
+        UnityPrintNumberByStyle(actual, style);
+        if (compare & UNITY_GREATER_THAN) { UnityPrint(UnityStrGt);      }
+        if (compare & UNITY_SMALLER_THAN) { UnityPrint(UnityStrLt);      }
+        if (compare & UNITY_EQUAL_TO)     { UnityPrint(UnityStrOrEqual); }
+        UnityPrintNumberByStyle(threshold, style);
+        UnityAddMsgIfSpecified(msg);
+#endif
         UNITY_FAIL_AND_BAIL;
     }
 }
@@ -846,35 +578,24 @@ void UnityAssertGreaterOrLessOrEqualNumber(const UNITY_INT threshold,
 void UnityAssertEqualIntArray(UNITY_INTERNAL_PTR expected,
                               UNITY_INTERNAL_PTR actual,
                               const UNITY_UINT32 num_elements,
-                              //// const char* msg,
-                              const TestLogger_t* logger,
+                              const char* msg,
                               const UNITY_LINE_TYPE lineNumber,
                               const UNITY_DISPLAY_STYLE_T style,
                               const UNITY_FLAGS_T flags)
 {
     UNITY_UINT32 elements = num_elements;
     unsigned int length   = style & 0xF;
-    const TestLogger_t* xlogger = logger;
-    if( xlogger==NULL ) { xlogger = currUnitTestLogger; }
-
     RETURN_IF_FAIL_OR_IGNORE;
 
-    if (num_elements == 0)
-    {
-        // store the result to a global structure list instead of printing it out
-        RECORD_TEST_FAIL_UINT32 ( xlogger, lineNumber, 
-                                  UNITY_NOT_EQUAL_TO, 0x0, num_elements );
+    if (num_elements == 0) {
+        Unity.CurrErr = (struct UNITY_CURR_ERR_T) {.msg=msg, .cmp=UNITY_EQUAL_TO};
         // UnityPrintPointlessAndBail();
         UNITY_FAIL_AND_BAIL;
     }
-
-    if (expected == actual)
-    {
+    if (expected == actual) {
         return; /* Both are NULL or same pointer */
     }
-
-    if (UnityIsOneArrayNull(expected, actual, lineNumber, xlogger))
-    {
+    if (UnityIsOneArrayNull(expected, actual, lineNumber, msg)) {
         UNITY_FAIL_AND_BAIL;
     }
 
@@ -905,8 +626,7 @@ void UnityAssertEqualIntArray(UNITY_INTERNAL_PTR expected,
                 break;
         }
 
-        if (expect_val != actual_val)
-        {
+        if (expect_val != actual_val) {
             if ((style & UNITY_DISPLAY_RANGE_UINT) && (length < sizeof(expect_val)))
             {   /* For UINT, remove sign extension (padding 1's) from signed type casts above */
                 UNITY_INT mask = 1;
@@ -914,17 +634,17 @@ void UnityAssertEqualIntArray(UNITY_INTERNAL_PTR expected,
                 expect_val &= mask;
                 actual_val &= mask;
             }
-            // store the result to a global structure list instead of printing it out
-            RECORD_TEST_FAIL_INT( xlogger, lineNumber,  
-                                  UNITY_EQUAL_TO, expect_val, actual_val );
-            // UnityTestResultsFailBegin(lineNumber);
-            // UnityPrint(UnityStrElement);
-            // UnityPrintNumberUnsigned(num_elements - elements - 1);
-            // UnityPrint(UnityStrExpected);
-            // UnityPrintNumberByStyle(expect_val, style);
-            // UnityPrint(UnityStrWas);
-            // UnityPrintNumberByStyle(actual_val, style);
-            // UnityAddMsgIfSpecified(msg);
+            Unity.CurrErr = (struct UNITY_CURR_ERR_T) {.msg=msg, .cmp=UNITY_EQUAL_TO};
+#if 0
+            UnityTestResultsFailBegin(lineNumber);
+            UnityPrint(UnityStrElement);
+            UnityPrintNumberUnsigned(num_elements - elements - 1);
+            UnityPrint(UnityStrExpected);
+            UnityPrintNumberByStyle(expect_val, style);
+            UnityPrint(UnityStrWas);
+            UnityPrintNumberByStyle(actual_val, style);
+            UnityAddMsgIfSpecified(msg);
+#endif
             UNITY_FAIL_AND_BAIL;
         }
         if (flags == UNITY_ARRAY_TO_ARRAY)
@@ -975,47 +695,33 @@ static int UnityFloatsWithin(UNITY_FLOAT delta, UNITY_FLOAT expected, UNITY_FLOA
 void UnityAssertEqualFloatArray(UNITY_PTR_ATTRIBUTE const UNITY_FLOAT* expected,
                                 UNITY_PTR_ATTRIBUTE const UNITY_FLOAT* actual,
                                 const UNITY_UINT32 num_elements,
-                                //// const char* msg,
-                                const TestLogger_t* logger,
+                                const char* msg,
                                 const UNITY_LINE_TYPE lineNumber,
                                 const UNITY_FLAGS_T flags)
 {
     UNITY_UINT32 elements = num_elements;
     UNITY_PTR_ATTRIBUTE const UNITY_FLOAT* ptr_expected = expected;
     UNITY_PTR_ATTRIBUTE const UNITY_FLOAT* ptr_actual = actual;
-    const TestLogger_t* xlogger = logger;
 
     RETURN_IF_FAIL_OR_IGNORE;
-    if( xlogger==NULL ) { xlogger = currUnitTestLogger; }
 
-    if (elements == 0)
-    {
-        // store the result to a global structure list instead of printing it out
-        RECORD_TEST_FAIL_UINT32( xlogger, lineNumber, 
-                                 UNITY_NOT_EQUAL_TO, 0x0, elements);
+    if (elements == 0) {
+        Unity.CurrErr = (struct UNITY_CURR_ERR_T) {.msg=msg, .cmp=UNITY_NOT_EQUAL_TO};
         // UnityPrintPointlessAndBail();
         UNITY_FAIL_AND_BAIL;
     }
-
-    if (expected == actual)
-    {
+    if (expected == actual) {
         return; /* Both are NULL or same pointer */
     }
-
-    if (UnityIsOneArrayNull((UNITY_INTERNAL_PTR)expected, (UNITY_INTERNAL_PTR)actual, lineNumber, xlogger))
+    if (UnityIsOneArrayNull((UNITY_INTERNAL_PTR)expected, (UNITY_INTERNAL_PTR)actual, lineNumber, msg))
     {
         UNITY_FAIL_AND_BAIL;
     }
 
-    while (elements--)
-    {
+    while (elements--) {
         if (!UnityFloatsWithin(*ptr_expected * UNITY_FLOAT_PRECISION, *ptr_expected, *ptr_actual))
         {
-            // store the result to a global structure list instead of printing it out
-            RECORD_TEST_WITHIN_FAIL_FLOAT( xlogger, lineNumber, 
-                                           ((*ptr_expected) * (1.0f + UNITY_FLOAT_PRECISION)),
-                                           ((*ptr_expected) * (1.0f - UNITY_FLOAT_PRECISION)),
-                                           (*ptr_actual) );
+            Unity.CurrErr = (struct UNITY_CURR_ERR_T) {.msg=msg, .cmp=UNITY_WITHIN};
             // UnityTestResultsFailBegin(lineNumber);
             // UnityPrint(UnityStrElement);
             // UnityPrintNumberUnsigned(num_elements - elements - 1);
@@ -1023,8 +729,7 @@ void UnityAssertEqualFloatArray(UNITY_PTR_ATTRIBUTE const UNITY_FLOAT* expected,
             // UnityAddMsgIfSpecified(msg);
             UNITY_FAIL_AND_BAIL;
         }
-        if (flags == UNITY_ARRAY_TO_ARRAY)
-        {
+        if (flags == UNITY_ARRAY_TO_ARRAY) {
             ptr_expected++;
         }
         ptr_actual++;
@@ -1035,19 +740,13 @@ void UnityAssertEqualFloatArray(UNITY_PTR_ATTRIBUTE const UNITY_FLOAT* expected,
 void UnityAssertFloatsWithin(const UNITY_FLOAT delta,
                              const UNITY_FLOAT expected,
                              const UNITY_FLOAT actual,
-                             //// const char* msg,
-                             const TestLogger_t* logger,
+                             const char* msg,
                              const UNITY_LINE_TYPE lineNumber)
 {
     RETURN_IF_FAIL_OR_IGNORE;
 
-    if (!UnityFloatsWithin(delta, expected, actual))
-    {
-        const TestLogger_t* xlogger = logger;
-        if( xlogger==NULL ) { xlogger = currUnitTestLogger; }
-        // store the result to a global structure list instead of printing it out
-        RECORD_TEST_WITHIN_FAIL_FLOAT( xlogger, lineNumber, (expected + delta), 
-                                       (expected - delta), actual );
+    if (!UnityFloatsWithin(delta, expected, actual)) {
+        Unity.CurrErr = (struct UNITY_CURR_ERR_T) {.msg=msg, .cmp=UNITY_WITHIN};
         // UnityTestResultsFailBegin(lineNumber);
         // UNITY_PRINT_EXPECTED_AND_ACTUAL_FLOAT((UNITY_DOUBLE)expected, (UNITY_DOUBLE)actual);
         // UnityAddMsgIfSpecified(msg);
@@ -1057,21 +756,18 @@ void UnityAssertFloatsWithin(const UNITY_FLOAT delta,
 
 /*-----------------------------------------------*/
 void UnityAssertFloatSpecial(const UNITY_FLOAT actual,
-                             //// const char* msg,
-                             const TestLogger_t* logger,
+                             const char* msg,
                              const UNITY_LINE_TYPE lineNumber,
                              const UNITY_FLOAT_TRAIT_T style)
 {
-    const char* trait_names[] = {UnityStrInf, UnityStrNegInf, UnityStrNaN, UnityStrDet};
+    // const char* trait_names[] = {UnityStrInf, UnityStrNegInf, UnityStrNaN, UnityStrDet};
     UNITY_INT should_be_trait = ((UNITY_INT)style & 1);
     UNITY_INT is_trait        = !should_be_trait;
-    UNITY_INT trait_index     = (UNITY_INT)(style >> 1);
-    const TestLogger_t* xlogger = logger;
+    // UNITY_INT trait_index     = (UNITY_INT)(style >> 1);
 
     RETURN_IF_FAIL_OR_IGNORE;
 
-    switch (style)
-    {
+    switch (style) {
         case UNITY_FLOAT_IS_INF:
         case UNITY_FLOAT_IS_NOT_INF:
             is_trait = isinf(actual) && (actual > 0);
@@ -1092,19 +788,13 @@ void UnityAssertFloatSpecial(const UNITY_FLOAT actual,
             break;
 
         default:
-            trait_index = 0;
-            trait_names[0] = UnityStrInvalidFloatTrait;
+            // trait_index = 0;
+            // trait_names[0] = UnityStrInvalidFloatTrait;
             break;
     }
 
-    if (is_trait != should_be_trait)
-    {
-        if( xlogger==NULL ) { xlogger = currUnitTestLogger; }
-        // store the result to a global structure list instead of printing it out
-        // deliberately produce NaN to expected value, it means we'd  like to check
-        // whether the actual value is NOT equal to NaN .
-        RECORD_TEST_FAIL_FLOAT( xlogger, lineNumber, 
-                                UNITY_NOT_EQUAL_TO , (0.0f/0.0f), actual );
+    if (is_trait != should_be_trait) {
+        Unity.CurrErr = (struct UNITY_CURR_ERR_T) {.msg=msg, .cmp=UNITY_NOT_EQUAL_TO};
         // UnityTestResultsFailBegin(lineNumber);
         // UnityPrint(UnityStrExpected);
         // if (!should_be_trait)
@@ -1141,47 +831,33 @@ static int UnityDoublesWithin(UNITY_DOUBLE delta, UNITY_DOUBLE expected, UNITY_D
 void UnityAssertEqualDoubleArray(UNITY_PTR_ATTRIBUTE const UNITY_DOUBLE* expected,
                                  UNITY_PTR_ATTRIBUTE const UNITY_DOUBLE* actual,
                                  const UNITY_UINT32 num_elements,
-                                 //// const char* msg,
-                                 const TestLogger_t* logger,
+                                 const char* msg,
                                  const UNITY_LINE_TYPE lineNumber,
                                  const UNITY_FLAGS_T flags)
 {
     UNITY_UINT32 elements = num_elements;
     UNITY_PTR_ATTRIBUTE const UNITY_DOUBLE* ptr_expected = expected;
     UNITY_PTR_ATTRIBUTE const UNITY_DOUBLE* ptr_actual = actual;
-    const TestLogger_t* xlogger = logger;
 
     RETURN_IF_FAIL_OR_IGNORE;
-    if( xlogger==NULL ) { xlogger = currUnitTestLogger; }
 
-    if (elements == 0)
-    {
-        // store the result to a global structure list instead of printing it out
-        RECORD_TEST_FAIL_UINT32( xlogger, lineNumber,  
-                                 UNITY_NOT_EQUAL_TO, 0x0, elements );
+    if (elements == 0) {
+        Unity.CurrErr = {.msg=msg, .cmp=UNITY_NOT_EQUAL_TO};
         // UnityPrintPointlessAndBail();
         UNITY_FAIL_AND_BAIL;
     }
-
-    if (expected == actual)
-    {
+    if (expected == actual) {
         return; /* Both are NULL or same pointer */
     }
-
-    if (UnityIsOneArrayNull((UNITY_INTERNAL_PTR)expected, (UNITY_INTERNAL_PTR)actual, lineNumber, xlogger))
+    if (UnityIsOneArrayNull((UNITY_INTERNAL_PTR)expected, (UNITY_INTERNAL_PTR)actual, lineNumber, msg))
     {
         UNITY_FAIL_AND_BAIL;
     }
 
-    while (elements--)
-    {
+    while (elements--) {
         if (!UnityDoublesWithin(*ptr_expected * UNITY_DOUBLE_PRECISION, *ptr_expected, *ptr_actual))
         {
-            // store the result to a global structure list instead of printing it out
-            RECORD_TEST_WITHIN_FAIL_DOUBLE( xlogger, lineNumber, 
-                                           ((*ptr_expected) * (1.0f + UNITY_DOUBLE_PRECISION)),
-                                           ((*ptr_expected) * (1.0f - UNITY_DOUBLE_PRECISION)),
-                                           (*ptr_actual) );
+            Unity.CurrErr = {.msg=msg, .cmp=UNITY_WITHIN};
             // UnityTestResultsFailBegin(lineNumber);
             // UnityPrint(UnityStrElement);
             // UnityPrintNumberUnsigned(num_elements - elements - 1);
@@ -1201,19 +877,13 @@ void UnityAssertEqualDoubleArray(UNITY_PTR_ATTRIBUTE const UNITY_DOUBLE* expecte
 void UnityAssertDoublesWithin(const UNITY_DOUBLE delta,
                               const UNITY_DOUBLE expected,
                               const UNITY_DOUBLE actual,
-                              //// const char* msg,
-                              const TestLogger_t* logger,
+                              const char* msg,
                               const UNITY_LINE_TYPE lineNumber)
 {
     RETURN_IF_FAIL_OR_IGNORE;
-    const TestLogger_t* xlogger = logger;
 
-    if (!UnityDoublesWithin(delta, expected, actual))
-    {
-        if( xlogger==NULL ) { xlogger = currUnitTestLogger; }
-        // store the result to a global structure list instead of printing it out
-        RECORD_TEST_WITHIN_FAIL_DOUBLE( xlogger, lineNumber, (expected + delta),
-                                       (expected - delta), actual );
+    if (!UnityDoublesWithin(delta, expected, actual)) {
+        Unity.CurrErr = {.msg=msg, .cmp=UNITY_WITHIN};
         // UnityTestResultsFailBegin(lineNumber);
         // UNITY_PRINT_EXPECTED_AND_ACTUAL_FLOAT(expected, actual);
         // UnityAddMsgIfSpecified(msg);
@@ -1223,8 +893,7 @@ void UnityAssertDoublesWithin(const UNITY_DOUBLE delta,
 
 /*-----------------------------------------------*/
 void UnityAssertDoubleSpecial(const UNITY_DOUBLE actual,
-                              //// const char* msg,
-                              const TestLogger_t* logger,
+                              const char* msg,
                               const UNITY_LINE_TYPE lineNumber,
                               const UNITY_FLOAT_TRAIT_T style)
 {
@@ -1232,12 +901,10 @@ void UnityAssertDoubleSpecial(const UNITY_DOUBLE actual,
     UNITY_INT should_be_trait = ((UNITY_INT)style & 1);
     UNITY_INT is_trait        = !should_be_trait;
     UNITY_INT trait_index     = (UNITY_INT)(style >> 1);
-    const TestLogger_t* xlogger = logger;
 
     RETURN_IF_FAIL_OR_IGNORE;
 
-    switch (style)
-    {
+    switch (style) {
         case UNITY_FLOAT_IS_INF:
         case UNITY_FLOAT_IS_NOT_INF:
             is_trait = isinf(actual) && (actual > 0);
@@ -1263,16 +930,11 @@ void UnityAssertDoubleSpecial(const UNITY_DOUBLE actual,
             break;
     }
 
-    if (is_trait != should_be_trait)
-    {
-        if( xlogger==NULL ) { xlogger = currUnitTestLogger; }
-        // store the result to a global structure list instead of printing it out
-        RECORD_TEST_FAIL_DOUBLE( xlogger, lineNumber, 
-                                 UNITY_NOT_EQUAL_TO , (0.0f/0.0f), actual );
+    if (is_trait != should_be_trait) {
+        Unity.CurrErr = {.msg=msg, .cmp=UNITY_NOT_EQUAL_TO};
         // UnityTestResultsFailBegin(lineNumber);
         // UnityPrint(UnityStrExpected);
-        // if (!should_be_trait)
-        // {
+        // if (!should_be_trait) {
         //     UnityPrint(UnityStrNot);
         // }
         // UnityPrint(trait_names[trait_index]);
@@ -1297,43 +959,27 @@ void UnityAssertDoubleSpecial(const UNITY_DOUBLE actual,
 void UnityAssertNumbersWithin(const UNITY_UINT delta,
                               const UNITY_INT expected,
                               const UNITY_INT actual,
-                              //// const char* msg,
-                              const TestLogger_t* logger,
+                              const char* msg,
                               const UNITY_LINE_TYPE lineNumber,
                               const UNITY_DISPLAY_STYLE_T style)
 {
     RETURN_IF_FAIL_OR_IGNORE;
-    const TestLogger_t* xlogger = logger;
-
-    if ((style & UNITY_DISPLAY_RANGE_INT) == UNITY_DISPLAY_RANGE_INT)
-    {
-        if (actual > expected)
-        {
+    if ((style & UNITY_DISPLAY_RANGE_INT) == UNITY_DISPLAY_RANGE_INT) {
+        if (actual > expected) {
             Unity.CurrentTestFailed = (((UNITY_UINT)actual - (UNITY_UINT)expected) > delta);
-        }
-        else
-        {
+        } else {
             Unity.CurrentTestFailed = (((UNITY_UINT)expected - (UNITY_UINT)actual) > delta);
         }
     }
-    else
-    {
-        if ((UNITY_UINT)actual > (UNITY_UINT)expected)
-        {
+    else {
+        if ((UNITY_UINT)actual > (UNITY_UINT)expected) {
             Unity.CurrentTestFailed = (((UNITY_UINT)actual - (UNITY_UINT)expected) > delta);
-        }
-        else
-        {
+        } else {
             Unity.CurrentTestFailed = (((UNITY_UINT)expected - (UNITY_UINT)actual) > delta);
         }
     }
-
-    if (Unity.CurrentTestFailed)
-    {
-        if( xlogger==NULL ) { xlogger = currUnitTestLogger; }
-        // store the result to a global structure list instead of printing it out
-        RECORD_TEST_WITHIN_FAIL_INT( xlogger, lineNumber,  
-                                     (expected + delta), (expected - delta), actual );
+    if (Unity.CurrentTestFailed) {
+        Unity.CurrErr = (struct UNITY_CURR_ERR_T) {.msg=msg, .cmp=UNITY_WITHIN};
         // UnityTestResultsFailBegin(lineNumber);
         // UnityPrint(UnityStrDelta);
         // UnityPrintNumberByStyle((UNITY_INT)delta, style);
@@ -1349,22 +995,16 @@ void UnityAssertNumbersWithin(const UNITY_UINT delta,
 /*-----------------------------------------------*/
 void UnityAssertEqualString(const char* expected,
                             const char* actual,
-                            //// const char* msg,
-                            const TestLogger_t* logger,
+                            const char* msg,
                             const UNITY_LINE_TYPE lineNumber)
 {
     UNITY_UINT32 i;
-    const TestLogger_t* xlogger = logger;
-
     RETURN_IF_FAIL_OR_IGNORE;
 
     /* if both pointers not null compare the strings */
-    if (expected && actual)
-    {
-        for (i = 0; expected[i] || actual[i]; i++)
-        {
-            if (expected[i] != actual[i])
-            {
+    if (expected && actual) {
+        for (i = 0; expected[i] || actual[i]; i++) {
+            if (expected[i] != actual[i]) {
                 Unity.CurrentTestFailed = 1;
                 break;
             }
@@ -1372,17 +1012,12 @@ void UnityAssertEqualString(const char* expected,
     }
     else
     { /* handle case of one pointers being null (if both null, test should pass) */
-        if (expected != actual)
-        {
+        if (expected != actual) {
             Unity.CurrentTestFailed = 1;
         }
     }
-
-    if (Unity.CurrentTestFailed)
-    {
-        if( xlogger==NULL ) { xlogger = currUnitTestLogger; }
-        // store the result to a global structure list instead of printing it out
-        RECORD_TEST_FAIL_STR_PTR( xlogger, lineNumber, UNITY_EQUAL_TO, expected, actual );
+    if (Unity.CurrentTestFailed) {
+        Unity.CurrErr = (struct UNITY_CURR_ERR_T){.msg=msg, .cmp=UNITY_EQUAL_TO};
         // UnityTestResultsFailBegin(lineNumber);
         // UnityPrintExpectedAndActualStrings(expected, actual);
         // UnityAddMsgIfSpecified(msg);
@@ -1394,22 +1029,17 @@ void UnityAssertEqualString(const char* expected,
 void UnityAssertEqualStringLen(const char* expected,
                                const char* actual,
                                const UNITY_UINT32 length,
-                               //// const char* msg,
-                               const TestLogger_t* logger,
+                               const char* msg,
                                const UNITY_LINE_TYPE lineNumber)
 {
-    UNITY_UINT32 i;
-    const TestLogger_t* xlogger = logger;
-
+    UNITY_UINT32 i = 0;
     RETURN_IF_FAIL_OR_IGNORE;
 
     /* if both pointers not null compare the strings */
-    if (expected && actual)
-    {
+    if (expected && actual) {
         for (i = 0; (i < length) && (expected[i] || actual[i]); i++)
         {
-            if (expected[i] != actual[i])
-            {
+            if (expected[i] != actual[i]) {
                 Unity.CurrentTestFailed = 1;
                 break;
             }
@@ -1417,17 +1047,13 @@ void UnityAssertEqualStringLen(const char* expected,
     }
     else
     { /* handle case of one pointers being null (if both null, test should pass) */
-        if (expected != actual)
-        {
+        if (expected != actual) {
             Unity.CurrentTestFailed = 1;
         }
     }
 
-    if (Unity.CurrentTestFailed)
-    {
-        if( xlogger==NULL ) { xlogger = currUnitTestLogger; }
-        // store the result to a global structure list instead of printing it out
-        RECORD_TEST_FAIL_STR_PTR( currUnitTestLogger, lineNumber, UNITY_EQUAL_TO, expected, actual );
+    if (Unity.CurrentTestFailed) {
+        Unity.CurrErr = (struct UNITY_CURR_ERR_T) {.msg=msg, .cmp=UNITY_EQUAL_TO};
         // UnityTestResultsFailBegin(lineNumber);
         // UnityPrintExpectedAndActualStringsLen(expected, actual, length);
         // UnityAddMsgIfSpecified(msg);
@@ -1439,40 +1065,30 @@ void UnityAssertEqualStringLen(const char* expected,
 void UnityAssertEqualStringArray(UNITY_INTERNAL_PTR expected,
                                  const char** actual,
                                  const UNITY_UINT32 num_elements,
-                                 //// const char* msg,
-                                 const TestLogger_t* logger,
+                                 const char* msg,
                                  const UNITY_LINE_TYPE lineNumber,
                                  const UNITY_FLAGS_T flags)
 {
-    UNITY_UINT32 i = 0;
-    UNITY_UINT32 j = 0;
-    const char* expd = NULL;
-    const char* act = NULL;
-    const TestLogger_t* xlogger = logger;
-    if( xlogger==NULL ) { xlogger = currUnitTestLogger; }
+    UNITY_UINT32 i, j = 0;
+    const char *expd = NULL, *act = NULL;
 
     RETURN_IF_FAIL_OR_IGNORE;
 
     /* if no elements, it's an error */
-    if (num_elements == 0)
-    {
-        // store the result to a global structure list instead of printing it out
+    if (num_elements == 0) {
+        Unity.CurrErr = (struct UNITY_CURR_ERR_T) {.msg=msg, .cmp=UNITY_NOT_EQUAL_TO};
         // UnityPrintPointlessAndBail();
         UNITY_FAIL_AND_BAIL;
     }
-
     if ((const void*)expected == (const void*)actual)
     {
         return; /* Both are NULL or same pointer */
     }
-
-    if (UnityIsOneArrayNull((UNITY_INTERNAL_PTR)expected, (UNITY_INTERNAL_PTR)actual, lineNumber, xlogger))
+    if (UnityIsOneArrayNull((UNITY_INTERNAL_PTR)expected, (UNITY_INTERNAL_PTR)actual, lineNumber, msg))
     {
         UNITY_FAIL_AND_BAIL;
     }
-
-    if (flags != UNITY_ARRAY_TO_ARRAY)
-    {
+    if (flags != UNITY_ARRAY_TO_ARRAY) {
         expd = (const char*)expected;
     }
 
@@ -1498,17 +1114,13 @@ void UnityAssertEqualStringArray(UNITY_INTERNAL_PTR expected,
         }
         else
         { /* handle case of one pointers being null (if both null, test should pass) */
-            if (expd != act)
-            {
+            if (expd != act) {
                 Unity.CurrentTestFailed = 1;
             }
         }
 
-        if (Unity.CurrentTestFailed)
-        {
-            // store the result to a global structure list instead of printing it out
-            RECORD_TEST_FAIL_STR_ARRAY_PTR( xlogger, lineNumber, 
-                                            UNITY_EQUAL_TO, expected, actual );
+        if (Unity.CurrentTestFailed) {
+            Unity.CurrErr = (struct UNITY_CURR_ERR_T) {.msg=msg, .cmp=UNITY_NOT_EQUAL_TO};
             // UnityTestResultsFailBegin(lineNumber);
             // if (num_elements > 1)
             // {
@@ -1527,8 +1139,7 @@ void UnityAssertEqualMemory(UNITY_INTERNAL_PTR expected,
                             UNITY_INTERNAL_PTR actual,
                             const UNITY_UINT32 length,
                             const UNITY_UINT32 num_elements,
-                            //// const char* msg,
-                            const TestLogger_t* logger,
+                            const char* msg,
                             const UNITY_LINE_TYPE lineNumber,
                             const UNITY_FLAGS_T flags)
 {
@@ -1536,61 +1147,27 @@ void UnityAssertEqualMemory(UNITY_INTERNAL_PTR expected,
     UNITY_PTR_ATTRIBUTE const unsigned char* ptr_act = (UNITY_PTR_ATTRIBUTE const unsigned char*)actual;
     UNITY_UINT32 elements = num_elements;
     UNITY_UINT32 bytes;
-    const TestLogger_t* xlogger = logger;
-    if( xlogger==NULL ) { xlogger = currUnitTestLogger; }
 
     RETURN_IF_FAIL_OR_IGNORE;
 
-    if (elements == 0)
-    {
-        // store the result to a global structure list instead of printing it out
-        RECORD_TEST_FAIL_UINT32( xlogger, lineNumber,  
-                                 UNITY_NOT_EQUAL_TO, 0x0, elements );
-        UNITY_FAIL_AND_BAIL;
-    }
-    if (length == 0)
-    {
-        // store the result to a global structure list instead of printing it out
-        RECORD_TEST_FAIL_UINT32( xlogger, lineNumber,  
-                                 UNITY_NOT_EQUAL_TO, 0x0, length );
+    if ((elements == 0) || (length == 0)) {
+        Unity.CurrErr = (struct UNITY_CURR_ERR_T) {.msg=msg, .cmp=UNITY_NOT_EQUAL_TO};
         // UnityPrintPointlessAndBail();
         UNITY_FAIL_AND_BAIL;
     }
-
-    if (expected == actual)
-    {
+    if (expected == actual) {
         return; /* Both are NULL or same pointer */
     }
-
-    if (UnityIsOneArrayNull(expected, actual, lineNumber, xlogger))
-    {
+    if (UnityIsOneArrayNull(expected, actual, lineNumber, msg)) {
         UNITY_FAIL_AND_BAIL;
     }
 
-    while (elements--)
-    {
+    while (elements--) {
         bytes = length;
-        while (bytes--)
-        {
-            if (*ptr_exp != *ptr_act)
-            {
+        while (bytes--) {
+            if (*ptr_exp != *ptr_act) {
                 // store the result to a global structure list instead of printing it out
-                RECORD_TEST_FAIL_MEM_PTR( xlogger, lineNumber, 
-                                          UNITY_EQUAL_TO, ptr_exp, ptr_act);
-                // UnityTestResultsFailBegin(lineNumber);
-                // UnityPrint(UnityStrMemory);
-                // if (num_elements > 1)
-                // {
-                //     UnityPrint(UnityStrElement);
-                //     UnityPrintNumberUnsigned(num_elements - elements - 1);
-                // }
-                // UnityPrint(UnityStrByte);
-                // UnityPrintNumberUnsigned(length - bytes - 1);
-                // UnityPrint(UnityStrExpected);
-                // UnityPrintNumberByStyle(*ptr_exp, UNITY_DISPLAY_STYLE_HEX8);
-                // UnityPrint(UnityStrWas);
-                // UnityPrintNumberByStyle(*ptr_act, UNITY_DISPLAY_STYLE_HEX8);
-                // UnityAddMsgIfSpecified(msg);
+                Unity.CurrErr = (struct UNITY_CURR_ERR_T) {.msg=msg, .cmp=UNITY_EQUAL_TO};
                 UNITY_FAIL_AND_BAIL;
             }
             ptr_exp++;
@@ -1667,41 +1244,9 @@ UNITY_INTERNAL_PTR UnityDoubleToPtr(const double num)
  *-----------------------------------------------*/
 
 /*-----------------------------------------------*/
-void UnityFail(
-    const char* msg,
-    const UNITY_LINE_TYPE line,
-    TESTLOGGER_COMPARISON_T compare_option
-) {
+void UnityFail(const char* msg, const UNITY_LINE_TYPE line) {
     RETURN_IF_FAIL_OR_IGNORE;
-    TestLogger_t* logger = NULL; // TODO, add logger for each failure point
-    // TestLogger_t* logger = xRegisterNewTestLogger(__FILE__, msg);
-
-    RECORD_TEST_FAIL_UINT32( logger, line, compare_option, NULL, NULL );
-    //// UnityTestResultsBegin(Unity.TestFile, line);
-    //// UnityPrint(UnityStrFail);
-    //// if (msg != NULL)
-    //// {
-    ////     UNITY_OUTPUT_CHAR(':');
-#ifndef UNITY_EXCLUDE_DETAILS
-    ////    if (Unity.CurrentDetail1)
-    ////    {
-    ////        UnityPrint(UnityStrDetail1Name);
-    ////        UnityPrint(Unity.CurrentDetail1);
-    ////        if (Unity.CurrentDetail2)
-    ////        {
-    ////            UnityPrint(UnityStrDetail2Name);
-    ////            UnityPrint(Unity.CurrentDetail2);
-    ////        }
-    ////        UnityPrint(UnityStrSpacer);
-    ////    }
-#endif
-    ////    if (msg[0] != ' ')
-    ////    {
-    ////        UNITY_OUTPUT_CHAR(' ');
-    ////    }
-    ////    UnityPrint(msg);
-    ////}
-
+    Unity.CurrErr = (struct UNITY_CURR_ERR_T) {.msg=msg, .cmp=UNITY_UNKNOWN};
     UNITY_FAIL_AND_BAIL;
 }
 
@@ -1751,9 +1296,6 @@ void UnityBegin(const char* filename)
     Unity.TestIgnores = 0;
     Unity.CurrentTestFailed = 0;
     Unity.CurrentTestIgnored = 0;
-    Unity.testResultListItemHead = NULL;
-    currUnitTestLogger = NULL;
-    vInitTestLogger();
     UNITY_EXEC_TIME_RESET();
 
     UNITY_CLR_DETAILS();
@@ -1764,241 +1306,7 @@ void UnityBegin(const char* filename)
 int UnityEnd(void)
 {
     // we can directly check the summary data by debugger if we don't use print function
-    // UNITY_PRINT_EOL();
-    // UnityPrint(UnityStrBreaker);
-    // UNITY_PRINT_EOL();
-    // UnityPrintNumber((UNITY_INT)(Unity.NumberOfTests));
-    // UnityPrint(UnityStrResultsTests);
-    // UnityPrintNumber((UNITY_INT)(Unity.TestFailures));
-    // UnityPrint(UnityStrResultsFailures);
-    // UnityPrintNumber((UNITY_INT)(Unity.TestIgnores));
-    // UnityPrint(UnityStrResultsIgnored);
-    // UNITY_PRINT_EOL();
-    // if (Unity.TestFailures == 0U)
-    // {
-    //     UnityPrint(UnityStrOk);
-    // }
-    // else
-    // {
-    //     UnityPrint(UnityStrFail);
-#ifdef UNITY_DIFFERENTIATE_FINAL_FAIL
-    //    UNITY_OUTPUT_CHAR('E'); UNITY_OUTPUT_CHAR('D');
-#endif
-    //}
-    // UNITY_PRINT_EOL();
-    // UNITY_FLUSH_CALL();
-    // UNITY_OUTPUT_COMPLETE();
     return (int)(Unity.TestFailures);
 }
 
-/*-----------------------------------------------
- * Command Line Argument Support
- *-----------------------------------------------*/
-#ifdef UNITY_USE_COMMAND_LINE_ARGS
-
-char* UnityOptionIncludeNamed = NULL;
-char* UnityOptionExcludeNamed = NULL;
-int UnityVerbosity            = 1;
-
-/*-----------------------------------------------*/
-int UnityParseOptions(int argc, char** argv)
-{
-    UnityOptionIncludeNamed = NULL;
-    UnityOptionExcludeNamed = NULL;
-    int i;
-
-    for (i = 1; i < argc; i++)
-    {
-        if (argv[i][0] == '-')
-        {
-            switch (argv[i][1])
-            {
-                case 'l': /* list tests */
-                    return -1;
-                case 'n': /* include tests with name including this string */
-                case 'f': /* an alias for -n */
-                    if (argv[i][2] == '=')
-                    {
-                        UnityOptionIncludeNamed = &argv[i][3];
-                    }
-                    else if (++i < argc)
-                    {
-                        UnityOptionIncludeNamed = argv[i];
-                    }
-                    else
-                    {
-                        UnityPrint("ERROR: No Test String to Include Matches For");
-                        UNITY_PRINT_EOL();
-                        return 1;
-                    }
-                    break;
-                case 'q': /* quiet */
-                    UnityVerbosity = 0;
-                    break;
-                case 'v': /* verbose */
-                    UnityVerbosity = 2;
-                    break;
-                case 'x': /* exclude tests with name including this string */
-                    if (argv[i][2] == '=')
-                    {
-                        UnityOptionExcludeNamed = &argv[i][3];
-                    }
-                    else if (++i < argc)
-                    {
-                        UnityOptionExcludeNamed = argv[i];
-                    }
-                    else
-                    {
-                        UnityPrint("ERROR: No Test String to Exclude Matches For");
-                        UNITY_PRINT_EOL();
-                        return 1;
-                    }
-                    break;
-                default:
-                    UnityPrint("ERROR: Unknown Option ");
-                    UNITY_OUTPUT_CHAR(argv[i][1]);
-                    UNITY_PRINT_EOL();
-                    return 1;
-            }
-        }
-    }
-
-    return 0;
-}
-
-/*-----------------------------------------------*/
-int IsStringInBiggerString(const char* longstring, const char* shortstring)
-{
-    const char* lptr = longstring;
-    const char* sptr = shortstring;
-    const char* lnext = lptr;
-
-    if (*sptr == '*')
-    {
-        return 1;
-    }
-
-    while (*lptr)
-    {
-        lnext = lptr + 1;
-
-        /* If they current bytes match, go on to the next bytes */
-        while (*lptr && *sptr && (*lptr == *sptr))
-        {
-            lptr++;
-            sptr++;
-
-            /* We're done if we match the entire string or up to a wildcard */
-            if (*sptr == '*')
-                return 1;
-            if (*sptr == ',')
-                return 1;
-            if (*sptr == '"')
-                return 1;
-            if (*sptr == '\'')
-                return 1;
-            if (*sptr == ':')
-                return 2;
-            if (*sptr == 0)
-                return 1;
-        }
-
-        /* Otherwise we start in the long pointer 1 character further and try again */
-        lptr = lnext;
-        sptr = shortstring;
-    }
-
-    return 0;
-}
-
-/*-----------------------------------------------*/
-int UnityStringArgumentMatches(const char* str)
-{
-    int retval;
-    const char* ptr1;
-    const char* ptr2;
-    const char* ptrf;
-
-    /* Go through the options and get the substrings for matching one at a time */
-    ptr1 = str;
-    while (ptr1[0] != 0)
-    {
-        if ((ptr1[0] == '"') || (ptr1[0] == '\''))
-        {
-            ptr1++;
-        }
-
-        /* look for the start of the next partial */
-        ptr2 = ptr1;
-        ptrf = 0;
-        do
-        {
-            ptr2++;
-            if ((ptr2[0] == ':') && (ptr2[1] != 0) && (ptr2[0] != '\'') && (ptr2[0] != '"') && (ptr2[0] != ','))
-            {
-                ptrf = &ptr2[1];
-            }
-        } while ((ptr2[0] != 0) && (ptr2[0] != '\'') && (ptr2[0] != '"') && (ptr2[0] != ','));
-
-        while ((ptr2[0] != 0) && ((ptr2[0] == ':') || (ptr2[0] == '\'') || (ptr2[0] == '"') || (ptr2[0] == ',')))
-        {
-            ptr2++;
-        }
-
-        /* done if complete filename match */
-        retval = IsStringInBiggerString(Unity.TestFile, ptr1);
-        if (retval == 1)
-        {
-            return retval;
-        }
-
-        /* done if testname match after filename partial match */
-        if ((retval == 2) && (ptrf != 0))
-        {
-            if (IsStringInBiggerString(Unity.CurrentTestName, ptrf))
-            {
-                return 1;
-            }
-        }
-
-        /* done if complete testname match */
-        if (IsStringInBiggerString(Unity.CurrentTestName, ptr1) == 1)
-        {
-            return 1;
-        }
-
-        ptr1 = ptr2;
-    }
-
-    /* we couldn't find a match for any substrings */
-    return 0;
-}
-
-/*-----------------------------------------------*/
-int UnityTestMatches(void)
-{
-    /* Check if this test name matches the included test pattern */
-    int retval;
-    if (UnityOptionIncludeNamed)
-    {
-        retval = UnityStringArgumentMatches(UnityOptionIncludeNamed);
-    }
-    else
-    {
-        retval = 1;
-    }
-
-    /* Check if this test name matches the excluded test pattern */
-    if (UnityOptionExcludeNamed)
-    {
-        if (UnityStringArgumentMatches(UnityOptionExcludeNamed))
-        {
-            retval = 0;
-        }
-    }
-
-    return retval;
-}
-
-#endif /* UNITY_USE_COMMAND_LINE_ARGS */
 /*-----------------------------------------------*/

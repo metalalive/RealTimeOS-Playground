@@ -3,8 +3,8 @@
 
 #define MPU_WRAPPERS_INCLUDED_FROM_API_FILE
 #include "FreeRTOS.h"
+#include "task.h" // for loading macro `taskDISABLE_INTERRUPTS`
 #undef  MPU_WRAPPERS_INCLUDED_FROM_API_FILE
-#include "unity_fixture.h"
 #include "tests/integration/FreeRTOS/port/stm32f446.h"
 
 #ifdef __cplusplus

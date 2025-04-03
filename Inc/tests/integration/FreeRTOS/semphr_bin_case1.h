@@ -7,7 +7,6 @@
 #include "task.h"
 #include "semphr.h"
 #undef  MPU_WRAPPERS_INCLUDED_FROM_API_FILE
-#include "unity_fixture.h"
 
 #ifdef __cplusplus
 extern "C" {

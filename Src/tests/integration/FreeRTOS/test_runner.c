@@ -1,16 +1,13 @@
 #include "tests/integration/FreeRTOS/test_runner.h"
 
-
-
-void vCreateAllTestTasks( void )
-{
+void vCreateAllTestTasks(void) {
     vSetupNestedInterruptTest();
     vStartIntegerMathTasks( tskIDLE_PRIORITY );
     vStartDynamicPriorityCase2( tskIDLE_PRIORITY );
     vStartDynamicPriorityCase1( tskIDLE_PRIORITY );
     #if (configCHECK_FOR_STACK_OVERFLOW > 0)
         vStartStackOverflowCheck( tskIDLE_PRIORITY );
-    #endif //// end of configCHECK_FOR_STACK_OVERFLOW
+    #endif
     vStartBlockTimeTasks( configMAX_PRIORITIES - 4 );
     vStartQueueTestCase1( tskIDLE_PRIORITY );
     vStartQueueTestCase2( tskIDLE_PRIORITY );
@@ -20,42 +17,35 @@ void vCreateAllTestTasks( void )
 
     #if (configUSE_COUNTING_SEMAPHORES == 1)
         vStartCountSemphrTest( tskIDLE_PRIORITY );
-    #endif // end of configUSE_COUNTING_SEMAPHORES
+    #endif
 
     #if (configUSE_MUTEXES == 1)
         vStartMutexTestCase1( tskIDLE_PRIORITY );
         #if (configUSE_RECURSIVE_MUTEXES == 1)
             vStartRecurMutexTest( tskIDLE_PRIORITY );
         #endif // end of configUSE_RECURSIVE_MUTEXES
-    #endif // end of configUSE_MUTEXES 
+    #endif 
 
     #if (configUSE_TASK_NOTIFICATIONS == 1)
         vStartNotifyTaskTest( tskIDLE_PRIORITY );
-    #endif //// end of configUSE_TASK_NOTIFICATIONS
+    #endif
 
     #if (configUSE_TIMERS == 1)
         vStartSoftwareTimerTest( tskIDLE_PRIORITY );
-    #endif //// end of configUSE_TIMERS
+    #endif
 } // end of vCreateAllTestTasks
 
 
-
-void vIntegrationTestRTOSISR1(void)
-{
-    if(xTaskGetSchedulerState() == taskSCHEDULER_RUNNING)
-    {
+void vIntegrationTestRTOSISR1(void) {
+    if(xTaskGetSchedulerState() == taskSCHEDULER_RUNNING) {
         vNestInterruptTestISR1();
         vQueueTestCase3ISR1();
         vBinSemphrCase2ISR1();
     }
 } // end of vIntegrationTestRTOSISR1
 
-
-
-void vIntegrationTestRTOSISR2(void)
-{
-    if(xTaskGetSchedulerState() == taskSCHEDULER_RUNNING)
-    {
+void vIntegrationTestRTOSISR2(void) {
+    if(xTaskGetSchedulerState() == taskSCHEDULER_RUNNING) {
         vNestInterruptTestISR2();
         vQueueTestCase3ISR2();
         #if (configUSE_TASK_NOTIFICATIONS == 1)
@@ -64,10 +54,7 @@ void vIntegrationTestRTOSISR2(void)
     }
 } // end of vIntegrationTestRTOSISR2
 
-
-
-BaseType_t vIntegrationTestRTOSMemManageHandler(void)
-{
+BaseType_t vIntegrationTestRTOSMemManageHandler(void) {
     BaseType_t alreadyHandled = pdFALSE;
     if(xTaskGetSchedulerState() == taskSCHEDULER_RUNNING)
     {
@@ -79,14 +66,9 @@ BaseType_t vIntegrationTestRTOSMemManageHandler(void)
 } // end of vIntegrationTestRTOSMemManageHandler
 
 
-
 #if (configUSE_TICK_HOOK > 0)
 void vApplicationTickHook( void )
 {
     vNestInterruptTestTickHook();
 }
 #endif // end of configUSE_TICK_HOOK
-
-
-
-

@@ -73,7 +73,7 @@ static void vDynPrControlTasksHandler(void *pvParams) {
             // but RTOS scheduler just doesn't work for a short while
             vTaskSuspendAll();
             // Check the value of sharedCounter
-            TEST_ASSERT_GREATER_THAN_UINT32( lastSharedCounter, sharedCounter );
+            configASSERT( lastSharedCounter <= sharedCounter );
             xTaskResumeAll();
         }
         // ---- the second part ----
@@ -83,7 +83,7 @@ static void vDynPrControlTasksHandler(void *pvParams) {
         // resume task 2, then kernel immediately performs context switch to task 2.
         vTaskResume( pxDynPrBatchIncr );
         // when CPU gets here, task 2 should have already added maxCounterValue to sharedCounter.
-        TEST_ASSERT_EQUAL_UINT32(maxCounterValue, sharedCounter);
+        configASSERT(maxCounterValue == sharedCounter);
         // resume task 1, then go back to the first part above again.
         vTaskResume( pxDynPrContnIncr );
     } // end of outer infinite loop

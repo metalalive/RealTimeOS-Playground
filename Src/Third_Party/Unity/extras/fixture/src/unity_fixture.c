@@ -10,7 +10,6 @@
 #include <string.h>
 
 struct UNITY_FIXTURE_T UnityFixture;
-extern TestLogger_t  *currUnitTestLogger ;
 
 /* If you decide to use the function pointer approach.
  * Build with -D UNITY_OUTPUT_CHAR=outputChar and include <stdio.h>
@@ -82,9 +81,6 @@ void UnityTestRunner(unityfunction* setup,
         Unity.TestFile = file;
         Unity.CurrentTestName = printableName;
         Unity.CurrentTestLineNumber = line;
-        // create logger of current test case, for storing
-        // the result of the test case, instead of printing it out
-        currUnitTestLogger = xRegisterNewTestLogger( file, printableName);
         // if (!UnityFixture.Verbose) {
         //     UNITY_OUTPUT_CHAR('.');
         // }
@@ -102,17 +98,14 @@ void UnityTestRunner(unityfunction* setup,
 
         UNITY_EXEC_TIME_START();
 
-        if (TEST_PROTECT())
-        {
+        if (TEST_PROTECT()) {
             setup();
             testBody();
         }
-        if (TEST_PROTECT())
-        {
+        if (TEST_PROTECT()) {
             teardown();
         }
-        if (TEST_PROTECT())
-        {
+        if (TEST_PROTECT()) {
             UnityPointer_UndoAllSets();
             if (!Unity.CurrentTestFailed)
                 UnityMalloc_EndTest();
@@ -154,7 +147,7 @@ void UnityMalloc_EndTest(void)
 {
     malloc_fail_countdown = MALLOC_DONT_FAIL;
     if (malloc_count != 0) {
-        UNITY_TEST_FAIL(Unity.CurrentTestLineNumber, "This test leaks!", UNITY_UNKNOWN);
+        UNITY_TEST_FAIL(Unity.CurrentTestLineNumber, "This test leaks!");
     }
 }
 
@@ -234,12 +227,12 @@ static int isOverrun(void* mem)
 
 static void release_memory(void* mem)
 {
-    const char end[] = "END";
     Guard* guard = (Guard*)mem;
     guard--;
 
     malloc_count--;
 #ifdef UNITY_EXCLUDE_STDLIB_MALLOC
+    const char end[] = "END";
     if (mem == unity_heap + heap_index - guard->size - sizeof(end))
     {
         heap_index -= (guard->size + sizeof(Guard) + sizeof(end));
@@ -251,17 +244,12 @@ static void release_memory(void* mem)
 
 void unity_free(void* mem)
 {
-    int overrun;
+    if(mem == NULL) { return; }
 
-    if (mem == NULL)
-    {
-        return;
-    }
-
-    overrun = isOverrun(mem);
+    int overrun = isOverrun(mem);
     release_memory(mem);
     if (overrun) {
-        UNITY_TEST_FAIL(Unity.CurrentTestLineNumber, "Buffer overrun detected during free()", UNITY_UNKNOWN);
+        UNITY_TEST_FAIL(Unity.CurrentTestLineNumber, "Buffer overrun detected during free()");
     }
 }
 
@@ -275,7 +263,6 @@ void* unity_calloc(size_t num, size_t size)
 
 void* unity_realloc(void* oldMem, size_t size)
 {
-    const char end[] = "END";
     Guard* guard = (Guard*)oldMem;
     void* newMem;
 
@@ -284,11 +271,10 @@ void* unity_realloc(void* oldMem, size_t size)
     guard--;
     if (isOverrun(oldMem)) {
         release_memory(oldMem);
-        UNITY_TEST_FAIL(Unity.CurrentTestLineNumber, "Buffer overrun detected during realloc()", UNITY_UNKNOWN);
+        UNITY_TEST_FAIL(Unity.CurrentTestLineNumber, "Buffer overrun detected during realloc()");
     }
 
-    if (size == 0)
-    {
+    if (size == 0) {
         release_memory(oldMem);
         return NULL;
     }
@@ -296,6 +282,7 @@ void* unity_realloc(void* oldMem, size_t size)
     if (guard->size >= size) return oldMem;
 
 #ifdef UNITY_EXCLUDE_STDLIB_MALLOC /* Optimization if memory is expandable */
+    const char end[] = "END";
     if (oldMem == unity_heap + heap_index - guard->size - sizeof(end) &&
         heap_index + size - guard->size <= UNITY_INTERNAL_HEAP_SIZE_BYTES)
     {
@@ -330,10 +317,8 @@ void UnityPointer_Init(void)
 void UnityPointer_Set(void** pointer, void* newValue, UNITY_LINE_TYPE line)
 {
     if (pointer_index >= UNITY_MAX_POINTERS) {
-        UNITY_TEST_FAIL(line, "Too many pointers set", UNITY_SMALLER_THAN);
-    }
-    else
-    {
+        UNITY_TEST_FAIL(line, "Too many pointers set");
+    } else {
         pointer_store[pointer_index].pointer = pointer;
         pointer_store[pointer_index].old_value = *pointer;
         *pointer = newValue;

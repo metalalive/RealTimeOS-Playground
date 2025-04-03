@@ -117,7 +117,6 @@ int main(void)
   /* Enable the TIM2 global Interrupt */
   ////HAL_NVIC_EnableIRQ(TIM2_IRQn); 
     // start the integration tests
-    vInitTestLogger();
     vCreateAllTestTasks();
     vTaskStartScheduler();
     TestEnd();

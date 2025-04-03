@@ -15,14 +15,13 @@ void vSetupNestedInterruptTest() {
 }
 
 void vNestInterruptTestISR1(void) {
-    float reg_read = 0.0f;
     const float EXPECTED_VALUE = 2.7181f;
     uNumNestInterrupts++;
     vFloatRegSetTest(EXPECTED_VALUE);
     vPreemptCurrentInterruptTest();
-    reg_read = fFloatRegGetTest();
-    // error happened if the values are different
-    TEST_ASSERT_EQUAL_FLOAT(EXPECTED_VALUE, reg_read);
+    float reg_read = fFloatRegGetTest();
+    // TODO, handle precision errors
+    configASSERT(EXPECTED_VALUE == reg_read);
     uNumNestInterrupts--;
 }
 
@@ -33,7 +32,7 @@ void vNestInterruptTestISR2(void) {
     if(uMaxNestInterrupts < uNumNestInterrupts) {
         uMaxNestInterrupts = uNumNestInterrupts;
     }
-    TEST_ASSERT_LESS_OR_EQUAL_UINT(MAX_NUM_NEST_INTERRUPT, uMaxNestInterrupts);
+    configASSERT(MAX_NUM_NEST_INTERRUPT >= uMaxNestInterrupts);
     vFloatRegSetTest(EXPECTED_VALUE);
     uNumNestInterrupts--;
 }

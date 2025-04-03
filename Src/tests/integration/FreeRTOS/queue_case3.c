@@ -38,7 +38,7 @@ void vQueueTestCase3ISR1(void) {
     // read out one item from the shared queue
     BaseType_t QopsStatus = xQueueReceiveFromISR( xQueue, (void *)&qItem, &pxHigherPriorityTaskWoken );
     if(QopsStatus == pdPASS) {
-        TEST_ASSERT_EQUAL_INT16(qItem, possibleQItemValue[tsk1syncRecverIdx]);
+        configASSERT(qItem == possibleQItemValue[tsk1syncRecverIdx]);
         tsk1syncRecverIdx = (tsk1syncRecverIdx + 1) % SHARED_Q_LENGTH;
     }
     // perform context switch if any higher priority task is woken due to xQueueReceiveFromISR() above
@@ -89,7 +89,7 @@ static void vQks3tsk2(void *pvParams) {
         portDISABLE_INTERRUPTS();
         BaseType_t QopsStatus = xQueueReceive(xQueue, (void *)&qItem, xBlockTime);
         if(QopsStatus == pdPASS) {
-            TEST_ASSERT_EQUAL_INT16(qItem, possibleQItemValue[tsk2syncRecverIdx]);
+            configASSERT(qItem == possibleQItemValue[tsk2syncRecverIdx]);
             tsk2syncRecverIdx = (tsk2syncRecverIdx + 1) % SHARED_Q_LENGTH;
         }
         portENABLE_INTERRUPTS();

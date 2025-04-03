@@ -34,8 +34,8 @@ static void vRecMtxLPtsk(void *pvParams) {
         BaseType_t   mtxOpsStatus = xSemaphoreTakeRecursive( xMutex, xBlockTime );
         if (mtxOpsStatus == pdPASS) {
             // the HP & MP task (high-priority & medium-priority task) should be suspended at the moment
-            TEST_ASSERT_EQUAL_UINT16(pdTRUE, uHPtaskIsSuspended);
-            TEST_ASSERT_EQUAL_UINT16(pdTRUE, uMPtaskIsSuspended);
+            configASSERT(pdTRUE == uHPtaskIsSuspended);
+            configASSERT(pdTRUE == uMPtaskIsSuspended);
             #if ( INCLUDE_eTaskGetState == 1 )
                 configASSERT( eTaskGetState(RecMtxMPtsk_tcb) == eSuspended );
                 configASSERT( eTaskGetState(RecMtxHPtsk_tcb) == eSuspended );
@@ -49,19 +49,19 @@ static void vRecMtxLPtsk(void *pvParams) {
             // using xSemaphoreTakeRecursive(), this task (LP task) should inherit HP task's priority, so the priority
             // of this task is temporarily as the same as the HP task.
             uxCurrentPriority = uxTaskPriorityGet( NULL );
-            TEST_ASSERT_EQUAL_UINT32(uxHPtskPriority, uxCurrentPriority);
+            configASSERT(uxHPtskPriority == uxCurrentPriority);
             // the 2 higher-priority task should be just blocked at here, not suspended .
-            TEST_ASSERT_NOT_EQUAL(pdTRUE, uHPtaskIsSuspended);
-            TEST_ASSERT_NOT_EQUAL(pdTRUE, uMPtaskIsSuspended);
+            configASSERT(pdTRUE != uHPtaskIsSuspended);
+            configASSERT(pdTRUE != uMPtaskIsSuspended);
             #if ( INCLUDE_eTaskGetState == 1 )
                 configASSERT( eTaskGetState(RecMtxMPtsk_tcb) == eBlocked );
                 configASSERT( eTaskGetState(RecMtxHPtsk_tcb) == eBlocked );
             #endif
             // release the mutex, then the give function should recover this task's priority.
             mtxOpsStatus = xSemaphoreGiveRecursive( xMutex );
-            TEST_ASSERT_EQUAL_INT32(pdPASS, mtxOpsStatus);
+            configASSERT(pdPASS == mtxOpsStatus);
             uxCurrentPriority = uxTaskPriorityGet( NULL );
-            TEST_ASSERT_EQUAL_UINT32(uxOriginPriority, uxCurrentPriority);
+            configASSERT(uxOriginPriority == uxCurrentPriority);
         }
         else{
             taskYIELD();
@@ -77,10 +77,10 @@ static void vRecMtxMPtsk(void *pvParams) {
         BaseType_t mtxOpsStatus = xSemaphoreTakeRecursive( xMutex, xBlockTime );
         if (mtxOpsStatus == pdPASS) {
             // the HP task (high-priority task) should be suspended at the moment
-            TEST_ASSERT_EQUAL_UINT16(pdTRUE, uHPtaskIsSuspended);
+            configASSERT(pdTRUE == uHPtaskIsSuspended);
             // give the mutex , so lower priority tasks can take it.
             mtxOpsStatus = xSemaphoreGiveRecursive( xMutex );
-            TEST_ASSERT_EQUAL_INT32(pdPASS, mtxOpsStatus);
+            configASSERT(pdPASS == mtxOpsStatus);
             // similarly, give up CPU control to let lower priority tasks take the mutex
             uMPtaskIsSuspended = pdTRUE;
             vTaskSuspend( NULL );
@@ -101,7 +101,7 @@ static void vRecMtxHPtsk(void *pvParams) {
         //  then this task has NO right to give the mutex.
         // , therefore it cannot be successful to give the mutex.
         BaseType_t mtxOpsStatus = xSemaphoreGiveRecursive( xMutex );
-        TEST_ASSERT_NOT_EQUAL(pdPASS, mtxOpsStatus);
+        configASSERT(pdPASS != mtxOpsStatus);
         // start taking the recursive mutex several times : 
         // when this task reaches the for-loop below at the first time, it will immediately return 
         // from xSemaphoreTakeRecursive() with pass status, the subsequent times back to the loop below
@@ -109,7 +109,7 @@ static void vRecMtxHPtsk(void *pvParams) {
         // specify short delay time to xSemaphoreTakeRecursive()
         for(idx=0; idx<MTX_REC_TAKE_MAX_COUNT; idx++) {
             mtxOpsStatus = xSemaphoreTakeRecursive( xMutex, xBlockTime );
-            TEST_ASSERT_EQUAL_INT32(pdPASS, mtxOpsStatus);
+            configASSERT(pdPASS == mtxOpsStatus);
             // delay this task for a while, to ensure other tasks attempting to take the mutex 
             // either get blocked or return with error . 
             vTaskDelay( xBlockTime >> 1 );
@@ -118,11 +118,11 @@ static void vRecMtxHPtsk(void *pvParams) {
         for(idx=0; idx<MTX_REC_TAKE_MAX_COUNT; idx++) {
             vTaskDelay( xBlockTime >> 1 );
             mtxOpsStatus = xSemaphoreGiveRecursive( xMutex );
-            TEST_ASSERT_EQUAL_INT32(pdPASS, mtxOpsStatus);
+            configASSERT(pdPASS == mtxOpsStatus);
         }
         // when the task gets here, the mutex should be available again & cannot be given ,
         mtxOpsStatus = xSemaphoreGiveRecursive( xMutex );
-        TEST_ASSERT_NOT_EQUAL(pdPASS, mtxOpsStatus);
+        configASSERT(pdPASS != mtxOpsStatus);
         // suspend this task, let lower priority tasks take the mutex & do something 
         uHPtaskIsSuspended = pdTRUE;
         vTaskSuspend(NULL);

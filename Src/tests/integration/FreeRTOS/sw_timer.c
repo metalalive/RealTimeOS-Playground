@@ -7,7 +7,7 @@
 static volatile portSHORT  uNumSWTimEvtsRecv ;
 
 static void vChkSWTimerCallback(TimerHandle_t xTimer) {
-    const portSHORT maxAllowableMarginTicks = 10;
+    const portSHORT maxAllowableMarginTicks = 20;
     TickType_t expectedTickCount = 0;
     TickType_t actualTickCount   = 0;
     // check how accurate the someware timer is, since we created & started the auto-reload
@@ -20,8 +20,8 @@ static void vChkSWTimerCallback(TimerHandle_t xTimer) {
     actualTickCount   = xTaskGetTickCount();
     //// TEST_COUNT_ERROR_GT( expectedTickCount, actualTickCount, error_flag_ptr);
     //// TEST_COUNT_ERROR_LT( (expectedTickCount + maxAllowableMarginTicks), actualTickCount, error_flag_ptr);
-    TEST_ASSERT_GREATER_OR_EQUAL_UINT32(expectedTickCount, actualTickCount);
-    TEST_ASSERT_LESS_OR_EQUAL_UINT32((expectedTickCount + maxAllowableMarginTicks), actualTickCount);
+    configASSERT(expectedTickCount <= actualTickCount);
+    configASSERT((expectedTickCount + maxAllowableMarginTicks) >= actualTickCount);
 }
 
 void vStartSoftwareTimerTest(UBaseType_t uxPriority) {

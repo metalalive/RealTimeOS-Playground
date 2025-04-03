@@ -26,7 +26,7 @@ void vBinSemphrCase2ISR1(void) {
     volatile UBaseType_t *pulSharedVariable = semParams->pulSharedVariable ;
     BaseType_t  pxHPtaskWoken = pdFALSE;
     if ((*pulSharedVariable) != BSEM_SHR_VAR_ISR_FLAG) {
-        TEST_ASSERT_EQUAL_UINT32(BSEM_SHR_VAR_TSK_FLAG, (*pulSharedVariable));
+        configASSERT(BSEM_SHR_VAR_TSK_FLAG == *pulSharedVariable);
         *pulSharedVariable = BSEM_SHR_VAR_ISR_FLAG;
         xSemaphoreGiveFromISR( xSemphr, &pxHPtaskWoken );
         portYIELD_FROM_ISR(pxHPtaskWoken);
@@ -41,7 +41,7 @@ static void vBinSmphrKs2Taker(void *pvParams) {
     for(;;) {
         BaseType_t semOpsStatus = xSemaphoreTake(xSemphr, xBlockTime);
         if(semOpsStatus == pdPASS) {
-            TEST_ASSERT_EQUAL_UINT32(BSEM_SHR_VAR_ISR_FLAG, (*pulSharedVariable));
+            configASSERT(BSEM_SHR_VAR_ISR_FLAG == *pulSharedVariable);
             *pulSharedVariable = BSEM_SHR_VAR_TSK_FLAG;
         }
     }

@@ -152,7 +152,6 @@ ifeq ($(UNIT_TEST), yes)
         Src/tests/unit/FreeRTOS/portable/ARM_CM4_MPU/test_vPortYield.c  \
         Src/Third_Party/Unity/src/unity.c \
         Src/Third_Party/Unity/extras/fixture/src/unity_fixture.c \
-        Src/tests/testlogger.c \
         Src/tests/unit/FreeRTOS/test_runner.c \
         Src/tests/unit/unit_test_entry.c
     C_INCLUDES += \
@@ -170,9 +169,6 @@ else
             Src/Third_Party/FreeRTOS/Source/tasks.c         \
             Src/Third_Party/FreeRTOS/Source/timers.c
         C_SOURCES += \
-            Src/tests/testlogger.c \
-            Src/Third_Party/Unity/src/unity.c \
-            Src/Third_Party/Unity/extras/fixture/src/unity_fixture.c \
             Src/tests/integration/integration_test_entry.c  \
             Src/tests/integration/FreeRTOS/port/stm32f446.c \
             Src/tests/integration/FreeRTOS/nestISR.c     \
@@ -192,9 +188,6 @@ else
             Src/tests/integration/FreeRTOS/sw_timer.c     \
             Src/tests/integration/FreeRTOS/stack_ovfl_chk.c     \
             Src/tests/integration/FreeRTOS/test_runner.c 
-        C_INCLUDES += \
-            -ISrc/Third_Party/Unity/src \
-            -ISrc/Third_Party/Unity/extras/fixture/src
         C_DEFS += -DINTEGRATION_TEST
     else
         C_SOURCES += Src/main.c 

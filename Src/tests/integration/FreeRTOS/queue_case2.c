@@ -59,7 +59,7 @@ static void vQks2recvChk(void *pvParams)
             // suspend itself until task 1 fills the shared queue
             vTaskSuspend(NULL);
             // after the task is woken, the shared queue should be full ...
-            TEST_ASSERT_EQUAL_UINT32(SHARED_Q_LENGTH, uxQueueMessagesWaiting(xQueue));
+            configASSERT(SHARED_Q_LENGTH == uxQueueMessagesWaiting(xQueue));
             bitPatternOfQueueSendOpts = idx;
             // calculate number of 1's in bitPatternOfQueueSendOpts,
             num1sBitPattern = Count1sBinarySeq( bitPatternOfQueueSendOpts );
@@ -67,22 +67,21 @@ static void vQks2recvChk(void *pvParams)
             // remind that bit 1 means xQueueSendToFront(), while bit 0 means xQueueSendToBack()
             qSendToBackIdx  = num1sBitPattern;
             qSendToFrontIdx = num1sBitPattern - 1;
-            for (jdx=0; jdx<SHARED_Q_LENGTH; jdx++)
-            {
+            for (jdx=0; jdx<SHARED_Q_LENGTH; jdx++) {
                 qItem = possibleQItemValue[jdx];
                 if((bitPatternOfQueueSendOpts & 0x1) == 0x1) {
-                    configASSERT( (qSendToFrontIdx >= 0) );
+                    configASSERT(qSendToFrontIdx >= 0);
                     expectSequenceItems[qSendToFrontIdx] = qItem;
                     qSendToFrontIdx--;
                 }
                 else {
-                    configASSERT( (qSendToBackIdx < SHARED_Q_LENGTH) );
+                    configASSERT(qSendToBackIdx < SHARED_Q_LENGTH);
                     expectSequenceItems[qSendToBackIdx] = qItem;
                     qSendToBackIdx++;
                 }
                 bitPatternOfQueueSendOpts = bitPatternOfQueueSendOpts >> 1;
             }
-            configASSERT( (bitPatternOfQueueSendOpts == 0) );
+            configASSERT(bitPatternOfQueueSendOpts == 0);
             // read out & check items from queue one by one, and compare with expectSequenceItems
             for (jdx=0; jdx<SHARED_Q_LENGTH; jdx++) {
                 // read the item without removing it from the shared queue
@@ -90,17 +89,17 @@ static void vQks2recvChk(void *pvParams)
                 actualSequenceItems[jdx] = 0;
                 QopsStatus = xQueuePeek( xQueue, (void *)&qItem, xBlockTime );
                 actualSequenceItems[jdx] = qItem;
-                TEST_ASSERT_EQUAL_INT32(pdPASS, QopsStatus);
-                TEST_ASSERT_EQUAL_UINT32((SHARED_Q_LENGTH - jdx), uxQueueMessagesWaiting(xQueue));
-                TEST_ASSERT_EQUAL_INT16(expectSequenceItems[jdx], actualSequenceItems[jdx]);
+                configASSERT(pdPASS == QopsStatus);
+                configASSERT((SHARED_Q_LENGTH - jdx) == uxQueueMessagesWaiting(xQueue));
+                configASSERT(expectSequenceItems[jdx] == actualSequenceItems[jdx]);
                 // read the item and remove it from the shared queue
                 qItem = 0;
                 actualSequenceItems[jdx] = 0;
                 QopsStatus = xQueueReceive( xQueue, (void *)&qItem, xBlockTime );
                 actualSequenceItems[jdx] = qItem;
-                TEST_ASSERT_EQUAL_INT32(pdPASS, QopsStatus);
-                TEST_ASSERT_EQUAL_UINT32((SHARED_Q_LENGTH - 1 - jdx), uxQueueMessagesWaiting(xQueue));
-                TEST_ASSERT_EQUAL_INT16(expectSequenceItems[jdx], actualSequenceItems[jdx]);
+                configASSERT(pdPASS == QopsStatus);
+                configASSERT((SHARED_Q_LENGTH - 1 - jdx) == uxQueueMessagesWaiting(xQueue));
+                configASSERT(expectSequenceItems[jdx] == actualSequenceItems[jdx]);
             }
         }  // end of loop through bit patterns of the number ranging from 0 to 2 ^ SHARED_Q_LENGTH
     } // end of outer infinite loop
@@ -120,22 +119,22 @@ static void vQks2sender(void *pvParams) {
         // check if queue works correctly when sending one item to the front of the queue
         qItem = possibleQItemValue[2];
         xQueueSendToFront( xQueue, (void *)&qItem, xBlockTime );
-        TEST_ASSERT_EQUAL_UINT32(1, uxQueueMessagesWaiting(xQueue));
+        configASSERT(1 == uxQueueMessagesWaiting(xQueue));
         qItem = 0;
         QopsStatus = xQueueReceive( xQueue, (void *)&qItem, xBlockTime );
-        TEST_ASSERT_EQUAL_UINT32(0, uxQueueMessagesWaiting(xQueue));
-        TEST_ASSERT_EQUAL_INT32(pdPASS, QopsStatus);
-        TEST_ASSERT_EQUAL_INT16(possibleQItemValue[2], qItem);
+        configASSERT(0 == uxQueueMessagesWaiting(xQueue));
+        configASSERT(pdPASS ==QopsStatus);
+        configASSERT(possibleQItemValue[2] == qItem);
 
         // do the same thing again, but we send one item to the back of the queue
         qItem = possibleQItemValue[4];
         xQueueSendToBack( xQueue, (void *)&qItem, xBlockTime );
-        TEST_ASSERT_EQUAL_UINT32(1, uxQueueMessagesWaiting(xQueue));
+        configASSERT(1 == uxQueueMessagesWaiting(xQueue));
         qItem = 0;
         QopsStatus = xQueueReceive( xQueue, (void *)&qItem, xBlockTime );
-        TEST_ASSERT_EQUAL_UINT32(0, uxQueueMessagesWaiting(xQueue));
-        TEST_ASSERT_EQUAL_INT32(pdPASS, QopsStatus);
-        TEST_ASSERT_EQUAL_INT16(possibleQItemValue[4], qItem);
+        configASSERT(0 == uxQueueMessagesWaiting(xQueue));
+        configASSERT(pdPASS == QopsStatus);
+        configASSERT(possibleQItemValue[4] == qItem);
 
         // from here on, this task fills the shared queue, using xQueueSendToFront() or
         // xQueueSendToBack()  with respect to bit pattern of the variable idx, 
@@ -169,7 +168,7 @@ static void vQks2sender(void *pvParams) {
                 else {
                     xQueueSendToBack( xQueue, (void *)&qItem, xBlockTime );
                 }
-                TEST_ASSERT_EQUAL_UINT32((jdx+1), uxQueueMessagesWaiting(xQueue));
+                configASSERT((jdx+1) == uxQueueMessagesWaiting(xQueue));
                 bitPatternOfQueueSendOpts = bitPatternOfQueueSendOpts >> 1;
             }
             // by resuming the other task, this task should be preempted then the other task takes

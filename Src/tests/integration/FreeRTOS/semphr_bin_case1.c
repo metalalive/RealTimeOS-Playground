@@ -40,10 +40,10 @@ static void vBinSmphrKs1Giver(void *pvParams)
         
         // counts up the shared variable
         for (idx=1; idx<=pulSharedVariableBackup; idx++) {
-             taskENTER_CRITICAL();
+            taskENTER_CRITICAL();
             *pulSharedVariable += 1;
-             taskEXIT_CRITICAL();
-            TEST_ASSERT_EQUAL_UINT32(idx, (*pulSharedVariable));
+            taskEXIT_CRITICAL();
+            configASSERT(idx == (*pulSharedVariable));
         } // give the semaphore, let the other task take it .
         xSemaphoreGive( xSemphr );
     }
@@ -80,7 +80,7 @@ static void vBinSmphrKs1Taker(void *pvParams)
         }
         // check value of shared variable
         pulCurrentPossibleValue = pulSharedVariableBackup;
-        TEST_ASSERT_EQUAL_UINT32(pulCurrentPossibleValue, (*pulSharedVariable));
+        configASSERT(pulCurrentPossibleValue == *pulSharedVariable);
         // counts up the shared variable then the the value again
         for (idx=1; idx<=pulSharedVariableBackup; idx++) {
              taskENTER_CRITICAL();
@@ -89,7 +89,7 @@ static void vBinSmphrKs1Taker(void *pvParams)
         }
         taskYIELD();
         pulCurrentPossibleValue = pulSharedVariableBackup << 1;
-        TEST_ASSERT_EQUAL_UINT32(pulCurrentPossibleValue, (*pulSharedVariable));
+        configASSERT(pulCurrentPossibleValue == *pulSharedVariable);
         taskYIELD();
     }
 } // end of vBinSmphrKs1Taker()

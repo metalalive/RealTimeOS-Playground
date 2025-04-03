@@ -40,7 +40,6 @@ static void vMtxKs1AccessMultiMutex1( mtxTestParamStruct *mtxParams )
     SemaphoreHandle_t  xMutexLocal = NULL ;
     // expected value of shared counter after all the tasks count up the counter.
     UBaseType_t expectedCounterValue = TEST_ADD_TWO + TEST_ADD_FIVE + TEST_ADD_THREE;
-
     BaseType_t mtxOpsStatus;
     UBaseType_t uxPriorityLPtsk, uxPriorityHPtsk, uxCurrentPriority;
 
@@ -56,28 +55,28 @@ static void vMtxKs1AccessMultiMutex1( mtxTestParamStruct *mtxParams )
     // #1: take the input mutex
     mtxOpsStatus = xSemaphoreTake( xMutexIn, xDontBlock);
     uxCurrentPriority = uxTaskPriorityGet( NULL );
-    TEST_ASSERT_EQUAL_INT32(pdPASS, mtxOpsStatus);
-    TEST_ASSERT_EQUAL_UINT32(uxPriorityLPtsk, uxCurrentPriority);
+    configASSERT(pdPASS == mtxOpsStatus);
+    configASSERT(uxPriorityLPtsk == uxCurrentPriority);
     // wake up the high-priority task & perform context switch, 
     // the HP task will take the same mutex xMutexIn but result in blocked state
     vTaskResume( xMtxKs1HPtsk_tcb );
     // when the LP task gets here, the HP task should be blocked because it fails to take xMutexIn, 
     // then priority inheritance should work to temporarily increase this task's priority
     uxCurrentPriority = uxTaskPriorityGet( NULL );
-    TEST_ASSERT_NOT_EQUAL(uxPriorityLPtsk, uxCurrentPriority);
-    TEST_ASSERT_EQUAL_UINT32(uxPriorityHPtsk, uxCurrentPriority);
+    configASSERT(uxPriorityLPtsk != uxCurrentPriority);
+    configASSERT(uxPriorityHPtsk == uxCurrentPriority);
     // try modifying LP task's priority, its priority should not be changed at here because 
     // the LP task hasn't released xMutexIn and still inherits HP task's priority.
     vTaskPrioritySet( NULL, uxPriorityLPtsk + 1 );
     uxCurrentPriority = uxTaskPriorityGet( NULL );
-    TEST_ASSERT_EQUAL_UINT32(uxPriorityHPtsk, uxCurrentPriority);
+    configASSERT(uxPriorityHPtsk == uxCurrentPriority);
     // resume MP task, but MP should NOT immediately preempt this (LP) task because of priority inheritance.
     vTaskResume( xMtxKs1MPtsk_tcb );
-    TEST_ASSERT_EQUAL_INT16(0, sharedCounter);
+    configASSERT(0 == sharedCounter);
 
     // #2: take the local mutex
     mtxOpsStatus = xSemaphoreTake( xMutexLocal, xDontBlock);
-    TEST_ASSERT_EQUAL_INT32(pdPASS, mtxOpsStatus);
+    configASSERT(pdPASS == mtxOpsStatus);
 
     // modify the shared counter
     sharedCounter += TEST_ADD_TWO;
@@ -86,22 +85,22 @@ static void vMtxKs1AccessMultiMutex1( mtxTestParamStruct *mtxParams )
     mtxOpsStatus = xSemaphoreGive( xMutexLocal );
     // LP task's priority still remains the same, equal to HP task's priority
     uxCurrentPriority = uxTaskPriorityGet( NULL );
-    TEST_ASSERT_EQUAL_UINT32(uxPriorityHPtsk, uxCurrentPriority);
+    configASSERT(uxPriorityHPtsk == uxCurrentPriority);
     // LP task's still inherits HP task's priority at here, so there shouldn't be context switch since last time
     // LP task resumed HP task.
-    TEST_ASSERT_EQUAL_INT16(TEST_ADD_TWO, sharedCounter);
+    configASSERT(TEST_ADD_TWO == sharedCounter);
 
     // #4: give the input mutex, 
     // from here the HP task gets xMutexIn then immeidately preempt LP task,
     mtxOpsStatus = xSemaphoreGive( xMutexIn );
-    TEST_ASSERT_EQUAL_INT32(pdPASS, mtxOpsStatus);
+    configASSERT(pdPASS == mtxOpsStatus);
 
     // when LP task gets here, its priority should no longer be the same as the HP task.
     uxCurrentPriority = uxTaskPriorityGet( NULL );
-    TEST_ASSERT_EQUAL_UINT32((uxPriorityLPtsk+1), uxCurrentPriority);
+    configASSERT((uxPriorityLPtsk+1) == uxCurrentPriority);
     // before this task, the LP task already added TEST_ADD_TWO to the shared counter.
     // here we simply recheck the value of the shared counter
-    TEST_ASSERT_EQUAL_INT16(expectedCounterValue, sharedCounter);
+    configASSERT(expectedCounterValue == sharedCounter);
 
     // recover LP task's priority
     vTaskPrioritySet( NULL, uxPriorityLPtsk );
@@ -143,28 +142,28 @@ static void vMtxKs1AccessMultiMutex2( mtxTestParamStruct *mtxParams ) {
     // #1: ---------------- take the input mutex ----------------
     mtxOpsStatus = xSemaphoreTake( xMutexIn, xDontBlock);
     uxCurrentPriority = uxTaskPriorityGet( NULL );
-    TEST_ASSERT_EQUAL_INT32(pdPASS, mtxOpsStatus);
-    TEST_ASSERT_EQUAL_UINT32(uxPriorityLPtsk, uxCurrentPriority);
+    configASSERT(pdPASS == mtxOpsStatus);
+    configASSERT(uxPriorityLPtsk == uxCurrentPriority);
     // wake up the high-priority task & perform context switch, 
     // the HP task will take the same mutex xMutexIn but result in blocked state
     vTaskResume( xMtxKs1HPtsk_tcb );
     // when the LP task gets here, the HP task should be blocked because it fails to take xMutexIn, 
     // then priority inheritance should work to temporarily increase this task's priority
     uxCurrentPriority = uxTaskPriorityGet( NULL );
-    TEST_ASSERT_NOT_EQUAL(uxPriorityLPtsk, uxCurrentPriority);
-    TEST_ASSERT_EQUAL_UINT32(uxPriorityHPtsk, uxCurrentPriority);
+    configASSERT(uxPriorityLPtsk != uxCurrentPriority);
+    configASSERT(uxPriorityHPtsk == uxCurrentPriority);
     // try modifying LP task's priority, its priority should not be changed at here because 
     // the LP task hasn't released xMutexIn and still inherits HP task's priority.
     vTaskPrioritySet( NULL, uxPriorityLPtsk + 1 );
     uxCurrentPriority = uxTaskPriorityGet( NULL );
-    TEST_ASSERT_EQUAL_UINT32(uxPriorityHPtsk, uxCurrentPriority);
+    configASSERT(uxPriorityHPtsk == uxCurrentPriority);
     // resume MP task, but MP should NOT immediately preempt this (LP) task because of priority inheritance.
     vTaskResume( xMtxKs1MPtsk_tcb );
-    TEST_ASSERT_EQUAL_INT16(0, sharedCounter);
+    configASSERT(0 == sharedCounter);
 
     // #2: ---------------- take the local mutex ----------------
     mtxOpsStatus = xSemaphoreTake(xMutexLocal, xDontBlock);
-    TEST_ASSERT_EQUAL_INT32(pdPASS, mtxOpsStatus);
+    configASSERT(pdPASS == mtxOpsStatus);
 
     // modify the shared counter
     sharedCounter += TEST_ADD_TWO;
@@ -177,20 +176,20 @@ static void vMtxKs1AccessMultiMutex2( mtxTestParamStruct *mtxParams ) {
     // it took before HP task can preempt LP task. See the archived discussion below :
     // https://www.freertos.org/FreeRTOS_Support_Forum_Archive/June_2017/freertos_Nested_mutexes_and_priority_inheritance_again_30f4e9ebj.html
     uxCurrentPriority = uxTaskPriorityGet( NULL );
-    TEST_ASSERT_EQUAL_UINT32(uxPriorityHPtsk, uxCurrentPriority);
-    TEST_ASSERT_EQUAL_INT16(TEST_ADD_TWO, sharedCounter);
+    configASSERT(uxPriorityHPtsk == uxCurrentPriority);
+    configASSERT(TEST_ADD_TWO == sharedCounter);
 
     // #4: ---------------- give the local mutex ----------------
     // from here the HP task gets xMutexIn then immeidately preempt LP task,
     mtxOpsStatus = xSemaphoreGive( xMutexLocal );
-    TEST_ASSERT_EQUAL_INT32(pdPASS, mtxOpsStatus);
+    configASSERT(pdPASS == mtxOpsStatus);
 
     // when LP task gets here, its priority should no longer be the same as the HP task.
     uxCurrentPriority = uxTaskPriorityGet( NULL );
-    TEST_ASSERT_EQUAL_UINT32((uxPriorityLPtsk+1), uxCurrentPriority);
+    configASSERT((uxPriorityLPtsk+1) == uxCurrentPriority);
     // before this task, the LP task already added TEST_ADD_TWO to the shared counter.
     // here we simply recheck the value of the shared counter
-    TEST_ASSERT_EQUAL_INT16(expectedCounterValue, sharedCounter);
+    configASSERT(expectedCounterValue == sharedCounter);
 
     // recover LP task's priority
     vTaskPrioritySet( NULL, uxPriorityLPtsk );
@@ -198,7 +197,6 @@ static void vMtxKs1AccessMultiMutex2( mtxTestParamStruct *mtxParams ) {
     vSemaphoreDelete( xMutexLocal );
     xMutexLocal = NULL;
 } // end of vMtxKs1AccessMultiMutex2()
-
 
 static void vMtxKs1LPtsk(void *pvParams) {
     mtxTestParamStruct *mtxParams = (mtxTestParamStruct *) pvParams;
@@ -215,11 +213,10 @@ static void vMtxKs1MPtsk(void *pvParams) {
         vTaskSuspend(NULL);
         // before this task, the LP task already added a number to the shared counter.
         // here we simply recheck the value of the shared counter
-        TEST_ASSERT_EQUAL_INT16(expectedCounterValue, sharedCounter);
+        configASSERT(expectedCounterValue == sharedCounter);
         sharedCounter += TEST_ADD_THREE;
     }
 }
-
 
 static void vMtxKs1HPtsk(void *pvParams) {
     mtxTestParamStruct *mtxParams = (mtxTestParamStruct *) pvParams;
@@ -233,10 +230,10 @@ static void vMtxKs1HPtsk(void *pvParams) {
         if (mtxOpsStatus == pdPASS) {
             // before this task, the LP task already added a number to the shared counter.
             // here we simply recheck the value of the shared counter
-            TEST_ASSERT_EQUAL_INT16(TEST_ADD_TWO, sharedCounter);
+            configASSERT(TEST_ADD_TWO == sharedCounter);
             sharedCounter += TEST_ADD_FIVE;
             mtxOpsStatus   = xSemaphoreGive( xMutexIn );
-            TEST_ASSERT_EQUAL_INT32(pdPASS, mtxOpsStatus);
+            configASSERT(pdPASS == mtxOpsStatus);
         }
     }
 } // end of vMtxKs1HPtsk

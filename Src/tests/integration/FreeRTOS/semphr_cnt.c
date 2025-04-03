@@ -20,48 +20,40 @@ static void vDecrSemphrCountToZero(smphrParamStruct *lclsemParams, UBaseType_t  
 {
     SemaphoreHandle_t     xSemphr     = lclsemParams->xSemphr ; 
     TickType_t            xBlockTime  = lclsemParams->xBlockTime ;
-
     BaseType_t            semOpsStatus;
     portSHORT             idx;
 
     // intially, the semaphore shouldn't be able to be given.
     semOpsStatus = xSemaphoreGive( xSemphr );
-    TEST_ASSERT_NOT_EQUAL( pdPASS, semOpsStatus );
+    configASSERT( pdPASS != semOpsStatus );
     // continuously takes the semaphore until the count value reaches zero
-    for(idx=0; idx<SMPH_CNT_MAX_LENGTH; idx++)
-    {
-        TEST_ASSERT_EQUAL_UINT32( (SMPH_CNT_MAX_LENGTH - idx), uxSemaphoreGetCount(xSemphr) );
+    for(idx=0; idx<SMPH_CNT_MAX_LENGTH; idx++) {
+        configASSERT((SMPH_CNT_MAX_LENGTH - idx) == uxSemaphoreGetCount(xSemphr));
         semOpsStatus = xSemaphoreTake( xSemphr, xBlockTime );
-        TEST_ASSERT_EQUAL_INT32( pdPASS, semOpsStatus );
+        configASSERT( pdPASS == semOpsStatus );
     }
     *currentCountValue = uxSemaphoreGetCount( xSemphr );
-} //// end of vDecrSemphrCountToZero()
-
+}
 
 static void vIncrSemphrCountToMax(smphrParamStruct *lclsemParams, UBaseType_t  *currentCountValue)
 {
     SemaphoreHandle_t     xSemphr     = lclsemParams->xSemphr ; 
     TickType_t            xBlockTime  = lclsemParams->xBlockTime ;
-
     BaseType_t            semOpsStatus;
     portSHORT             idx;
-
     // intially, the semaphore shouldn't be able to be taken.
     semOpsStatus = xSemaphoreTake( xSemphr, xBlockTime );
-    TEST_ASSERT_NOT_EQUAL( pdPASS, semOpsStatus );
+    configASSERT(pdPASS != semOpsStatus);
     // continuously gives the semaphore until the count value reaches its defined maximum
-    for(idx=0; idx<SMPH_CNT_MAX_LENGTH; idx++)
-    {
-        TEST_ASSERT_EQUAL_UINT32( idx, uxSemaphoreGetCount(xSemphr) );
+    for(idx=0; idx<SMPH_CNT_MAX_LENGTH; idx++) {
+        configASSERT( idx == uxSemaphoreGetCount(xSemphr) );
         semOpsStatus = xSemaphoreGive( xSemphr );
-        TEST_ASSERT_EQUAL_INT32( pdPASS, semOpsStatus );
+        configASSERT( pdPASS == semOpsStatus );
     }
     *currentCountValue = uxSemaphoreGetCount( xSemphr );
-} //// end of vIncrSemphrCountToMax
+}
 
-
-static void vCntSmphrTestTsk(void *pvParams)
-{
+static void vCntSmphrTestTsk(void *pvParams) {
     smphrParamStruct *lclsemParams = (smphrParamStruct *) pvParams;
     UBaseType_t  currentCountValue;
     // check initial value of the counting semaphore 
@@ -69,8 +61,7 @@ static void vCntSmphrTestTsk(void *pvParams)
     if(currentCountValue == SMPH_CNT_MAX_LENGTH) {
         vDecrSemphrCountToZero( lclsemParams, &currentCountValue );
     }
-    for(;;)
-    {
+    for(;;) {
         vIncrSemphrCountToMax(  lclsemParams, &currentCountValue );
         vDecrSemphrCountToZero( lclsemParams, &currentCountValue );
         taskYIELD();

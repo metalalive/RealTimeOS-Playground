@@ -32,14 +32,14 @@ static UBaseType_t vRecurFibonacciNum(unsigned portSHORT n) {
 
 static void vStkOvflTask (void *pvParams) {
     const portSHORT idx = 0;
-    TEST_ASSERT_EQUAL_UINT32(expectNumStkOvfls, actualNumStkOvfls);
+    configASSERT(expectNumStkOvfls == actualNumStkOvfls);
     expectNumStkOvfls++;
     // delibarately invoke a recursive function, fill the task's stack space, 
     // until stack overflow is detected by underlying hardware (e.g. MPU, MMU in CPU)
     // then recover stack frames for this user task within RTOS kernel.
     vRecurFibonacciNum( intgSTACK_SIZE );
     // CPU should NOT get here in this test case.
-    TEST_ASSERT_EQUAL_UINT32(expectNumStkOvfls, actualNumStkOvfls);
+    configASSERT(expectNumStkOvfls == actualNumStkOvfls);
     for(;;);
 }
 

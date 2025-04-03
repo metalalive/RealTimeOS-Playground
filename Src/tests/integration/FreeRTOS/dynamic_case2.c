@@ -23,7 +23,7 @@ static void vDynPrChkShrCntHandler(void *pvParams) {
         taskENTER_CRITICAL();
         sharedCounter = 0;
         expectedVal = sharedCounter;
-        TEST_ASSERT_EQUAL_UINT32(expectedVal, sharedCounter);
+        configASSERT(expectedVal == sharedCounter);
         taskEXIT_CRITICAL();
 
         // try to increase the priority of task 2 (vDynPrAddShrCntHandler) when scheduler is suspended,
@@ -32,7 +32,7 @@ static void vDynPrChkShrCntHandler(void *pvParams) {
         vTaskSuspendAll();
         vTaskPrioritySet( pxDynPrAddShrCnt, (configMAX_PRIORITIES - 1) );
         taskENTER_CRITICAL();
-        TEST_ASSERT_EQUAL_UINT32(expectedVal, sharedCounter);
+        configASSERT(expectedVal == sharedCounter);
         taskEXIT_CRITICAL();
         xTaskResumeAll();
 
@@ -40,7 +40,7 @@ static void vDynPrChkShrCntHandler(void *pvParams) {
         // sharedCounter should be greater than expectedVal
         taskENTER_CRITICAL();
         expectedVal++;
-        TEST_ASSERT_EQUAL_UINT32( expectedVal, sharedCounter );
+        configASSERT( expectedVal == sharedCounter );
         taskEXIT_CRITICAL();
         vTaskDelay((TickType_t)50);
         

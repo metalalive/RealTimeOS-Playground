@@ -29,11 +29,11 @@ static void vNotifyTsk2tskTaker(void *pvParams) {
         // By passing pdTRUE  to the first argument, the notification value is always set 
         // to zero on exiting the take function, This can be used in place of binary semaphore. 
         uint32_t ulTskNotifyReturn = ulTaskNotifyTake(pdTRUE, (portMAX_DELAY - 1));
-        TEST_ASSERT_EQUAL_UINT32(TEST_ADD_TEN, (*pulSharedVariable));
+        configASSERT(TEST_ADD_TEN == (*pulSharedVariable));
         *pulSharedVariable += TEST_ADD_TEN;
         // wait for notification again
         ulTskNotifyReturn = ulTaskNotifyTake( pdTRUE, (portMAX_DELAY - 1) );
-        TEST_ASSERT_EQUAL_UINT32((TEST_ADD_TEN*3), (*pulSharedVariable));
+        configASSERT((TEST_ADD_TEN*3) == *pulSharedVariable);
     }
 } // end of vNotifyTsk2tskTaker()
 
@@ -46,7 +46,7 @@ static void vNotifyTsk2tskGiver(void *pvParams) {
         *pulSharedVariable += TEST_ADD_TEN;
         taskYIELD();
         xTaskNotifyGive( NtfT2Ttaker_tcb );
-        TEST_ASSERT_EQUAL_UINT32((TEST_ADD_TEN*2), (*pulSharedVariable));
+        configASSERT((TEST_ADD_TEN*2) == *pulSharedVariable);
         *pulSharedVariable += TEST_ADD_TEN;
         taskYIELD();
         xTaskNotifyGive( NtfT2Ttaker_tcb );
@@ -92,9 +92,9 @@ static void vNotifyISR2TskTaker(void *pvParams) {
         // if the number of processed events currently reached maximum ...
         if(ulNumNotifyEvtProcessed == NOTIFY_MAX_NUM_EVENTS)
         {
-            TEST_ASSERT_EQUAL_UINT32(1, uLastNotifyValB4Decrement);
+            configASSERT(1 == uLastNotifyValB4Decrement);
             // check if we process the same number of notification signals from the interrupt
-            TEST_ASSERT_EQUAL_UINT32(ulNumNotifyEvtProcessed, (*pulSharedVariable));
+            configASSERT(ulNumNotifyEvtProcessed == *pulSharedVariable);
             // optional delay to let tasks of other tests take CPU control.
             vTaskDelay( pdMS_TO_TICKS(60) );
             // to disable interrupts whose "priority number" is greater than configMAX_SYSCALL_INTERRUPT_PRIORITY 
