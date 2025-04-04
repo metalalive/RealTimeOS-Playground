@@ -1,4 +1,4 @@
-#include "tests/integration/FreeRTOS/test_runner.h"
+#include "test_runner.h"
 
 void vCreateAllTestTasks(void) {
     vSetupNestedInterruptTest();

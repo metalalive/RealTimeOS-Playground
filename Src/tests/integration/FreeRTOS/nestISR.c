@@ -1,4 +1,4 @@
-#include "tests/integration/FreeRTOS/nestISR.h"
+#include "nestISR.h"
 
 // external routines / variables --------------------------
 // internal variables -------------------------------------

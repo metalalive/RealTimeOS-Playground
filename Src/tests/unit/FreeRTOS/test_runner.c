@@ -7,8 +7,6 @@
 // -------------------------------------------------------------------
 // this file collects all the test cases of FreeRTOS port functions
 
-
-
 // from test_vPortYield.c
 extern void  TEST_HELPER_setPendsvVisitFlag(); 
 // from test_prvRestoreContextOfFirstTask.c
@@ -147,8 +145,7 @@ void SVC_Handler(void)
 } //// end of SVC_Handler
 
 
-void SysTick_Handler(void)
-{
+void SysTick_Handler(void) {
     __asm volatile (
         "push  {lr}  \n"
         "bl    TEST_HELPER_xPortStartScheduler_SysTickHandleEntry    \n"
@@ -157,24 +154,14 @@ void SysTick_Handler(void)
         "bl    TEST_HELPER_vPortSuppressTicksAndSleep_sysTickEntry   \n"
         "pop   {lr}  \n"
     );
-} //// end of SysTick_Handler
+}
 
+BaseType_t vIntegrationTestRTOSMemManageHandler(void) {
+    TEST_HELPER_xPortStartScheduler_memMgtFaultEntry();
+    return pdTRUE;
+}
 
-
-void MemManage_Handler(void)
-{
-    __asm volatile (
-        "push  {lr}  \n"
-        "bl    TEST_HELPER_xPortStartScheduler_memMgtFaultEntry  \n"
-        "pop   {lr}  \n"
-    );
-    while(1);
-} //// end of MemManage_Handler
-
-
-
-void HardFault_Handler(void)
-{
+void HardFault_Handler(void) {
     // check which sp we are using
     __asm volatile (
         "tst     lr, #0x4  \n"
@@ -186,9 +173,10 @@ void HardFault_Handler(void)
         "pop     {lr}  \n"
     );
     for(;;);
-} //// end of HardFault_Handler
+}
 
-
+void vIntegrationTestRTOSISR1(void) {}
+void vIntegrationTestRTOSISR2(void) {}
 
 void vCopyMPUregionSetupToCheckList( xMPU_SETTINGS *xMPUSettings )
 {
@@ -197,14 +185,9 @@ void vCopyMPUregionSetupToCheckList( xMPU_SETTINGS *xMPUSettings )
     for(idx=0 ; idx<(portNUM_CONFIGURABLE_REGIONS + 1); idx++) {
         vPortGetMPUregion((4 + idx), &xMPUSettings->xRegion[idx]);
     }
-} //// end of vCopyMPUregionSetupToCheckList
+}
 
-
-
-
-
-TEST_GROUP_RUNNER( FreeRTOS_v10_2_port )
-{
+TEST_GROUP_RUNNER(FreeRTOS_v10_2_port) {
     RUN_TEST_CASE( pxPortInitialiseStack, initedStack_privileged );
     RUN_TEST_CASE( pxPortInitialiseStack, initedStack_unprivileged );
     RUN_TEST_CASE( vPortPendSVHandler, cs_with_fp );
@@ -222,4 +205,3 @@ TEST_GROUP_RUNNER( FreeRTOS_v10_2_port )
     RUN_TEST_CASE( xPortStartScheduler , regs_chk );
     RUN_TEST_CASE( vPortYield, gen_pendsv_excpt );
 }
-

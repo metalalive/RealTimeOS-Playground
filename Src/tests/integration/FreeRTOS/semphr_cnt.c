@@ -1,4 +1,4 @@
-#include "tests/integration/FreeRTOS/semphr_cnt.h"
+#include "semphr_cnt.h"
 
 #define  NUM_OF_TASKS            2
 #define  SMPH_CNT_MAX_LENGTH     5

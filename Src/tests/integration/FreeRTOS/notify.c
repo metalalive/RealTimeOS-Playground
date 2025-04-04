@@ -1,4 +1,4 @@
-#include "tests/integration/FreeRTOS/notify.h"
+#include "notify.h"
 
 #define  NUM_OF_TASKS    3
 #define  NOTIFY_MAX_NUM_EVENTS  100

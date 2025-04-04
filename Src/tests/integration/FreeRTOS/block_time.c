@@ -1,4 +1,4 @@
-#include "tests/integration/FreeRTOS/block_time.h"
+#include "block_time.h"
 
 #define NUM_OF_TASKS        2 
 // in our case, we create tasks' stack using privileged function  pvPortMalloc() 

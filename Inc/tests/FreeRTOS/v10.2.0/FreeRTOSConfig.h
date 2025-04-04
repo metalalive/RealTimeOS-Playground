@@ -120,6 +120,7 @@
 #define configTIMER_TASK_STACK_DEPTH             0x3e
 #define configTIMER_QUEUE_LENGTH                 4 
 #define configCHECK_FOR_STACK_OVERFLOW           1
+#define configENABLE_MPU                         0 // TODO, enable MPU test
 
 /* Co-routine definitions. */
 #define configUSE_CO_ROUTINES                    0

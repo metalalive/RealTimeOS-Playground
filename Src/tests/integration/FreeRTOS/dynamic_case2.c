@@ -1,4 +1,4 @@
-#include "tests/integration/FreeRTOS/dynamic_case2.h"
+#include "dynamic_case2.h"
 
 #define NUM_OF_TASKS         2
 // in our case, we create tasks' stack using privileged function  pvPortMalloc() 

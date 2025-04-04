@@ -1,8 +1,7 @@
-#include "tests/integration/FreeRTOS/port/stm32f446.h"
+#include "port/stm32f446.h"
 
 extern void  MX_TIM3_Init(void);
 extern void  MX_TIM4_Init(void);
-
 
 void  vIntegrationTestDeviceInit(void)
 {
@@ -28,9 +27,7 @@ void vFloatRegSetTest(float fin)
     );
 }
 
-
-float fFloatRegGetTest(void)
-{
+float fFloatRegGetTest(void) {
     float fout = 0.0;
     __asm volatile(
         "vmov.F32  %0, s4  \r\n"
@@ -38,8 +35,6 @@ float fFloatRegGetTest(void)
     );
     return fout;
 }
-
-
 
 StackType_t *pxPortTestRecoverExptnStack( StackType_t *pxTopOfStack, TaskFunction_t pxTaskStartFunc, void *pvParams )
 {
@@ -57,12 +52,6 @@ StackType_t *pxPortTestRecoverExptnStack( StackType_t *pxTopOfStack, TaskFunctio
 } // end of pxPortTestRecoverExptnStack
 
 
-
-
-
-void  vPreemptCurrentInterruptTest()
-{
+void  vPreemptCurrentInterruptTest() {
     NVIC_SetPendingIRQ(TIM4_IRQn);
 }
-
-

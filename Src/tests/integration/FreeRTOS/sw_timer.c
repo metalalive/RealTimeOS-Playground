@@ -1,4 +1,4 @@
-#include "tests/integration/FreeRTOS/sw_timer.h"
+#include "sw_timer.h"
 
 // define software timer's period in ticks
 #define SW_TIM_PERIOD_TICK  pdMS_TO_TICKS(400)

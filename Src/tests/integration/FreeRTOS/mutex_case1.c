@@ -1,4 +1,4 @@
-#include "tests/integration/FreeRTOS/mutex_case1.h"
+#include "mutex_case1.h"
 
 #define  NUM_OF_TASKS  3
 // in our case, we create tasks' stack using privileged function  pvPortMalloc() 

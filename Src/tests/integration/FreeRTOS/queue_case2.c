@@ -1,4 +1,4 @@
-#include "tests/integration/FreeRTOS/queue_case2.h"
+#include "queue_case2.h"
 
 #define  NUM_OF_TASKS        2
 #define  SHARED_Q_LENGTH     5

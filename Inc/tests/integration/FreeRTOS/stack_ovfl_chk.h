@@ -6,7 +6,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #undef  MPU_WRAPPERS_INCLUDED_FROM_API_FILE
-#include "tests/integration/FreeRTOS/port/stm32f446.h"
+#include "port/stm32f446.h"
 
 #ifdef __cplusplus
 extern "C" {

@@ -56,26 +56,25 @@ void TEST_HELPER_xPortStartScheduler_memMgtFaultEntry( void )
             "msr  control, r2   \n"
             "isb  \n"
         );
-        // get MMFSR from CFSR
+        // get Mem Management Fault Status Reg from CFSR
         MMFSR = SCB->CFSR & SCB_CFSR_MEMFAULTSR_Msk;
-        unpriv_branch_fail_cnt++;
-        __asm volatile("pop  {lr}   \n");
-        // when CPU gets here, that means we capture invalid unprivilege access
         if((MMFSR & DACCVIOL)==0x2) {
-        }
-        // when CPU gets here, that means we capture invalid branch
-        // when the unprivileged software attempts to call privileged
-        // function (but results in HardFault exception here)
-        else if((MMFSR & IACCVIOL)==0x1) {
-            // copy lr to pc in the same exception stack frame,
+            // invalid unprivilege access tp data section
+            unpriv_branch_fail_cnt++;
+        } else if((MMFSR & IACCVIOL)==0x1) {
+            // this processor captures invalid branch when the unprivileged
+            // software attempts to call privileged function (but results
+            // in HardFault exception here) .
+            unpriv_branch_fail_cnt++;
+            // Copy lr to pc in the same exception stack frame,
             // in order to skip the unprivileged branch after returning
-            // from this HardFault exception handler in this test.
+            // from this MemManage exception handler in this test.
             __asm volatile(
-                "ldr  r2,   [sp, #0x14] \n"
-                "str  r2,   [sp, #0x18] \n"
-                "dsb                    \n"
+                "ldr  r2, [sp, #0x24] \n"
+                "str  r2, [sp, #0x28] \n"
+                "dsb                  \n"
             );
-        } // end of IACCVIOL check
+        }
     } // end of expected_value check
 } //// end of TEST_HELPER_xPortStartScheduler_memMgtFaultEntry
 

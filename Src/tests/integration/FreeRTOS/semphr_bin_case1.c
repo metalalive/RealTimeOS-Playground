@@ -1,4 +1,4 @@
-#include "tests/integration/FreeRTOS/semphr_bin_case1.h"
+#include "semphr_bin_case1.h"
 
 #define  NUM_OF_TASKS  4
 // in our case, we create tasks' stack using privileged function  pvPortMalloc() 

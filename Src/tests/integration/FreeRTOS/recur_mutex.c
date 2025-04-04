@@ -1,4 +1,4 @@
-#include "tests/integration/FreeRTOS/recur_mutex.h"
+#include "recur_mutex.h"
 
 #define  NUM_OF_TASKS    3
 #define  MTX_REC_TAKE_MAX_COUNT  7

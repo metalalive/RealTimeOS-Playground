@@ -1,4 +1,4 @@
-#include "tests/integration/FreeRTOS/queue_case1.h"
+#include "queue_case1.h"
 
 #define  NUM_OF_TASKS        6
 // in our case, we create tasks' stack using privileged function  pvPortMalloc() 

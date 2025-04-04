@@ -1,4 +1,4 @@
-#include "tests/integration/FreeRTOS/stack_ovfl_chk.h"
+#include "stack_ovfl_chk.h"
 
 // in our case, we create tasks' stack using privileged function  pvPortMalloc() 
 // implemented in heap_4.c, each allocated block memory preserves first 8 bytes 

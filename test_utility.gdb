@@ -5,8 +5,6 @@ define reload_image
     load
 end
 
-
-
 define report_test_result
     set print address on
     set $currTestNode = testloggerlist->head
@@ -59,21 +57,14 @@ define report_test_result
     print $num_of_fails
 end
 
-
-
-
 define report_mpu_region
     set *0xe000ed98 = $arg0
     x/3xw 0xe000ed98
 end
-
-
-
 
 file    build/stm32_port_freertos_v10.2.elf
 target  remote localhost:3333
 reload_image
 break   TestEnd
 info    b
-
 
