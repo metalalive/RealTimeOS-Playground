@@ -1,67 +1,31 @@
-// for C unit test framework Unity
 #include "unity_fixture.h"
-// in this test, we will put a function & few variables in privileged area
-// by putting the macros PRIVILEGED_FUNCTION and PRIVILEGED_DATA ahead of
-// the privileged function & data. 
 #define MPU_WRAPPERS_INCLUDED_FROM_API_FILE
-// for FreeRTOS
 #include "FreeRTOS.h"
+#include "task.h"
+#undef MPU_WRAPPERS_INCLUDED_FROM_API_FILE
 
 typedef struct {
-    // asserted on SysTick handler routine.
     UBaseType_t  sysTickFlag;
-    // asserted on PendSV handler routine
-    UBaseType_t  pendSVflag;
 } flagSet_chk_t;
 
-static flagSet_chk_t  *expected_value = NULL;
 static flagSet_chk_t  *actual_value   = NULL;
-static BaseType_t      xMockYieldTaskFlag ;
 
 
-void TEST_HELPER_vPortSysTickHandler_PendSVentry( void )
-{
-    if( actual_value != NULL ) {
-        actual_value->pendSVflag = 1;
-    }
-} //// end of TEST_HELPER_vPortSysTickHandler_PendSVentry
-
-
-void TEST_HELPER_vPortSysTickHandler_SysTickEntry( void )
-{
-    if( actual_value != NULL )
-    {
+void TEST_HELPER_SysTickInterrupt(void) {
+    if(actual_value != NULL) {
+        uint32_t cnt_flg = SysTick->CTRL & SysTick_CTRL_COUNTFLAG_Msk;
+        configASSERT( cnt_flg == SysTick_CTRL_COUNTFLAG_Msk );
+        SysTick->CTRL = 0L;
+        SysTick->VAL = 0;
         actual_value->sysTickFlag = 1;
-        __asm volatile (
-            "pop  {lr}                   \n"
-            "b    vPortSysTickHandler    \n"
-        );
     }
-} //// end of TEST_HELPER_vPortSysTickHandler_SysTickEntry
-
-
-
-
-// mock FreeRTOS API function for this test
-BaseType_t xTaskIncrementTick( void )
-{
-    return xMockYieldTaskFlag;
 }
 
+TEST_GROUP(SysTickInterrupt);
 
-
-TEST_GROUP( vPortSysTickHandler );
-
-
-TEST_SETUP( vPortSysTickHandler )
-{
-    xMockYieldTaskFlag = pdFALSE;
-    expected_value = (flagSet_chk_t *) unity_malloc( sizeof(flagSet_chk_t) );
+TEST_SETUP(SysTickInterrupt) {
     actual_value   = (flagSet_chk_t *) unity_malloc( sizeof(flagSet_chk_t) );
-    expected_value->sysTickFlag = 0;
-    expected_value->pendSVflag  = 0;
     actual_value->sysTickFlag = 0;
-    actual_value->pendSVflag  = 0;
     // enable SysTick timer
     SysTick->CTRL = 0L;
     SysTick->VAL  = 0L;
@@ -75,16 +39,11 @@ TEST_SETUP( vPortSysTickHandler )
         "isb      \n"
         :::"memory"
     );
-} //// end of TEST_SETUP
+}
 
-
-
-TEST_TEAR_DOWN( vPortSysTickHandler )
-{
+TEST_TEAR_DOWN( SysTickInterrupt ) {
     // free memory allocated to check lists 
-    unity_free( (void *)expected_value ); 
     unity_free( (void *)actual_value   ); 
-    expected_value = NULL; 
     actual_value   = NULL; 
     // disable interrupt & reset priority
     __asm volatile(
@@ -98,38 +57,15 @@ TEST_TEAR_DOWN( vPortSysTickHandler )
     SysTick->VAL   = 0;
     SysTick->LOAD  = 0;
     NVIC_SetPriority( SysTick_IRQn, 0 );
-} //// end of TEST_TEAR_DOWN
+}
 
-
-
-
-
-TEST( vPortSysTickHandler, func_chk )
-{
-    TEST_ASSERT_EQUAL_UINT32( expected_value->sysTickFlag, actual_value->sysTickFlag );
-    // turn on SysTick, the sysTickFlag will be set later in the handler.
-    SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_TICKINT_Msk | SysTick_CTRL_ENABLE_Msk ;
-    while (actual_value->sysTickFlag == 0);
-    expected_value->sysTickFlag = 1;
-    TEST_ASSERT_EQUAL_UINT32( expected_value->sysTickFlag, actual_value->sysTickFlag );
-    TEST_ASSERT_EQUAL_UINT32( expected_value->pendSVflag , actual_value->pendSVflag );
-    // turn off SysTick temporarily, then turn on again
-    SysTick->CTRL  = 0;
-    SysTick->VAL   = 0;
-    actual_value->sysTickFlag = 0;
-    actual_value->pendSVflag  = 0;
-    xMockYieldTaskFlag = pdTRUE;
-    SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_TICKINT_Msk | SysTick_CTRL_ENABLE_Msk ;
-
-    while (actual_value->sysTickFlag == 0);
-    expected_value->sysTickFlag = 1;
-    expected_value->pendSVflag  = 1;
-    TEST_ASSERT_EQUAL_UINT32( expected_value->sysTickFlag, actual_value->sysTickFlag );
-    TEST_ASSERT_EQUAL_UINT32( expected_value->pendSVflag , actual_value->pendSVflag );
-    // turn off SysTick
-    SysTick->CTRL  = 0;
-} //// end of test body
-
-
-
-
+TEST(SysTickInterrupt, raise_ok) {
+    for(size_t idx = 0; idx < 5; idx++) {
+        actual_value->sysTickFlag = 0;
+        SysTick->CTRL = SysTick_CTRL_CLKSOURCE_Msk | SysTick_CTRL_TICKINT_Msk | SysTick_CTRL_ENABLE_Msk ;
+        while (actual_value->sysTickFlag == 0);
+        TEST_ASSERT_EQUAL_UINT32( 0, SysTick->VAL );
+        TEST_ASSERT_EQUAL_UINT32( 0, SysTick->CTRL );
+        TEST_ASSERT_EQUAL_UINT32( 1, actual_value->sysTickFlag );
+    }
+}

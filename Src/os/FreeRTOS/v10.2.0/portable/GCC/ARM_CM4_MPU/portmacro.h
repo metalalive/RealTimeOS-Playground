@@ -278,9 +278,7 @@ void        vPortResetPrivilege( BaseType_t privRaised );
 
 // ------------- for context switch -------------
 void prvRestoreContextOfFirstTask( void );
-
-void vPortPendSVHandler( void );
-
+void vPortPendSVHandler(void);
 
 // ------------------ task yielding functions -----------------------
 // with MPU enabled, and prilvileged / unprivileged tasks created in your
@@ -357,8 +355,11 @@ __INLINE void        vPortSetBASEPRI( UBaseType_t ulNewMaskValue );
 // check if CPU runs inside ISR currently
 BaseType_t  xPortIsInsideInterrupt( void );
 
-
-
+// ------- added for this project -------
+// for few cases, hard faults can be recoverable
+BaseType_t vPortTryRecoverHardFault(UBaseType_t *sp);
+void vPortSVCHandler(UBaseType_t *sp);
+void vPortSysTickHandler(void);
 
 // -------------------- assertion check --------------------
 #ifdef configASSERT

@@ -1,11 +1,12 @@
+#include "string.h"
 // for C unit test framework Unity
 #include "unity_fixture.h"
-// in this test, we will put a function & few variables in privileged area
-// by putting the macros PRIVILEGED_FUNCTION and PRIVILEGED_DATA ahead of
-// the privileged function & data. 
 #define MPU_WRAPPERS_INCLUDED_FROM_API_FILE
-// for FreeRTOS
 #include "FreeRTOS.h"
+#include "task.h"
+#undef  MPU_WRAPPERS_INCLUDED_FROM_API_FILE
+
+#define  TEST_STACK_SIZE  0x30
 
 typedef struct {
     unsigned portCHAR SysTick_IP;    // systick interrupt priority
@@ -16,164 +17,100 @@ typedef struct {
     UBaseType_t       SCB_CPACR;     // Coprocessor Access Control Register
     UBaseType_t       FPU_FPCCR;     // floating-point context control register
     SysTick_Type      SysTickRegs;   // all registers within SysTick 
-    xMPU_SETTINGS     xMPUsetup;  // record settings of first 4 MPU regions (#0 - #3)
 } RegsSet_chk_t;
 
+static StackType_t xTaskEmojiStack[TEST_STACK_SIZE] = {0};
+static TaskHandle_t taskEmojiHandle = NULL;
 // collecting actual data from registers & check at the end of this test
 static RegsSet_chk_t  *expected_value = NULL;
 static RegsSet_chk_t  *actual_value = NULL;
-static unsigned portCHAR   unpriv_branch_fail_cnt;
-PRIVILEGED_DATA static volatile UBaseType_t uMockPrivVar ;
 static volatile UBaseType_t uMockTickCount ;
 static unsigned portCHAR ucVisitSVC0Flag;
+
+// from tasks.c
+extern volatile void *pxCurrentTCB;
 // from port.c
 extern unsigned portCHAR   ucGetMaxInNvicIPRx( void );
 extern unsigned portSHORT  ucGetMaxPriGroupInAIRCR( void );
-extern void vPortGetMPUregion(portSHORT, xMPU_REGION_REGS *);
-extern void vPortSetMPUregion(xMPU_REGION_REGS *);
 
+// top stack pointer, for STM32F446 platform, it is end of SRAM 0x20020000
+// it may not be allowed to directly access the variable `_estack` in linker
+// script since its address is 0x0 , instead the accessible address is shown
+// below
+static StackType_t *end_of_sram = (StackType_t *) 0x20020000;
 
-void TEST_HELPER_xPortStartScheduler_SVC0entry( void )
-{
+// backup main stack pointer for recover after test
+static StackType_t   msp_backup;
+static StackType_t  *stackframes_backup = NULL;
+static size_t   backup_nbytes = 0;
+
+void TEST_HELPER_backupMSP(void) {
+    __asm volatile (
+        "mrs    %0, msp     \n"
+        :"=r"(msp_backup) ::
+    );
+    size_t initial_sp = (size_t) end_of_sram;
+    configASSERT(initial_sp > msp_backup);
+    backup_nbytes = initial_sp - (size_t) msp_backup;
+    stackframes_backup = (StackType_t *) unity_malloc(backup_nbytes);
+    memcpy((void *)stackframes_backup, (void *)msp_backup, backup_nbytes);
     if( expected_value != NULL ) {
         ucVisitSVC0Flag = 1;
     }
-} //// end of TEST_HELPER_xPortStartScheduler_SVC0entry
-
-
-void TEST_HELPER_xPortStartScheduler_memMgtFaultEntry( void )
-{
-    // memory management fault status register
-    uint8_t      MMFSR = 0;
-    // instruction accress violation flag in MMFSR
-    const  uint8_t IACCVIOL = 0x1;
-    const  uint8_t DACCVIOL = 0x2;
-    if( expected_value != NULL ) {
-        // switch back to privileged state for Thread mode.
-        __asm volatile (
-            "mrs  r2 , control  \n"
-            "bic  r2 , r2, #0x1 \n"
-            "msr  control, r2   \n"
-            "isb  \n"
-        );
-        // get Mem Management Fault Status Reg from CFSR
-        MMFSR = SCB->CFSR & SCB_CFSR_MEMFAULTSR_Msk;
-        if((MMFSR & DACCVIOL)==0x2) {
-            // invalid unprivilege access tp data section
-            unpriv_branch_fail_cnt++;
-        } else if((MMFSR & IACCVIOL)==0x1) {
-            // this processor captures invalid branch when the unprivileged
-            // software attempts to call privileged function (but results
-            // in HardFault exception here) .
-            unpriv_branch_fail_cnt++;
-            // Copy lr to pc in the same exception stack frame,
-            // in order to skip the unprivileged branch after returning
-            // from this MemManage exception handler in this test.
-            __asm volatile(
-                "ldr  r2, [sp, #0x24] \n"
-                "str  r2, [sp, #0x28] \n"
-                "dsb                  \n"
-            );
-        }
-    } // end of expected_value check
-} //// end of TEST_HELPER_xPortStartScheduler_memMgtFaultEntry
-
-
-void TEST_HELPER_xPortStartScheduler_SysTickHandleEntry( void )
-{
+}
+void TEST_HELPER_restoreMSP(void) {
+    __asm volatile (
+        "mov r0 ,  #0 \n"
+        "msr control,  r0 \n"
+        // hacky, replace the 2nd stack frame (which should be link
+        // register of `TEST_HELPER_backupMSP`) with current link register
+        // , in order to return from start-scheduler function.
+        "mov %0 ,  lr \n"
+        :"=r"(stackframes_backup[1]) ::
+    );
+    memcpy((void *)msp_backup, (void *)stackframes_backup, backup_nbytes);
+    __asm volatile (
+        "msr msp,  %0 \n" // switch back to previous msp in main thread
+        :: "r"(msp_backup)
+    );
+}
+void TEST_HELPER_StartScheduler_IncreSysTick(void) {
     if( expected_value != NULL ) {
         uMockTickCount++;
     }
-} //// end of TEST_HELPER_xPortStartScheduler_SysTickHandleEntry
+}
+static void vTaskFunction_emoji(void *pvParameters) {
+    // SP_prccess is used in all tasks, shouldn't affect SP_main
+    TaskStatus_t taskInfo = {0};
+    vTaskGetInfo(taskEmojiHandle, &taskInfo, pdFALSE, eInvalid);
+    configASSERT(taskInfo.eCurrentState == eRunning);
+    __asm volatile(
+        "svc  #0x0f" // switch back to main thread task
+    ); 
+    configASSERT(pdFALSE);
+}
 
+TEST_GROUP( StartScheduler );
 
-PRIVILEGED_FUNCTION static void prvUpdateMPUcheckList (xMPU_SETTINGS *target)
-{
-    extern  UBaseType_t  __privileged_code_end__[];
-    extern  UBaseType_t  __code_segment_start__ [];
-    extern  UBaseType_t  __code_segment_end__[];
-    extern  UBaseType_t  __privileged_data_start__[];
-    extern  UBaseType_t  __privileged_data_end__[];
-    UBaseType_t  ulRegionSizeInBytes = 0;
-
-    // Note: MPU_RBAR.VALID is always read as zero, no need to check this bit.
-    // unprivileged code section (all FLASH memory)
-    ulRegionSizeInBytes = (UBaseType_t)__code_segment_end__ - (UBaseType_t)__code_segment_start__;
-    target->xRegion[0].RBAR = ((UBaseType_t) __code_segment_start__ & MPU_RBAR_ADDR_Msk) | portUNPRIVILEGED_FLASH_REGION;
-    target->xRegion[0].RASR = portMPU_REGION_READ_ONLY |  MPU_RASR_S_Msk | MPU_RASR_C_Msk | MPU_RASR_B_Msk |
-                              ( MPU_RASR_SIZE_Msk & (prvMPUregionSizeEncode(ulRegionSizeInBytes) << MPU_RASR_SIZE_Pos) )
-                              | MPU_RASR_ENABLE_Msk ;
-
-    // privileged code section (first few KBytes of the FLASH memory, determined by application)
-    ulRegionSizeInBytes = (UBaseType_t)__privileged_code_end__  - (UBaseType_t)__code_segment_start__;
-    target->xRegion[1].RBAR = ((UBaseType_t) __code_segment_start__ & MPU_RBAR_ADDR_Msk) | portPRIVILEGED_FLASH_REGION ;
-    target->xRegion[1].RASR = portMPU_REGION_PRIVILEGED_READ_ONLY |  MPU_RASR_S_Msk | MPU_RASR_C_Msk | MPU_RASR_B_Msk |
-                              ( MPU_RASR_SIZE_Msk & (prvMPUregionSizeEncode(ulRegionSizeInBytes) << MPU_RASR_SIZE_Pos) )
-                              | MPU_RASR_ENABLE_Msk ;
-
-    // privileged data section (first few KBytes of the SRAM memory, determined by application)
-    ulRegionSizeInBytes = (UBaseType_t) __privileged_data_end__ - (UBaseType_t)__privileged_data_start__;
-    target->xRegion[2].RBAR = ((UBaseType_t) __privileged_data_start__ & MPU_RBAR_ADDR_Msk) | portPRIVILEGED_SRAM_REGION;
-    target->xRegion[2].RASR = portMPU_REGION_PRIVILEGED_READ_WRITE | MPU_RASR_S_Msk | MPU_RASR_C_Msk | MPU_RASR_B_Msk |
-                             ( MPU_RASR_SIZE_Msk & (prvMPUregionSizeEncode(ulRegionSizeInBytes) << MPU_RASR_SIZE_Pos) )
-                             | MPU_RASR_ENABLE_Msk ;
-
-    // peripheral region should have different attributes from normal memory
-    target->xRegion[3].RBAR = ((UBaseType_t) PERIPH_BASE & MPU_RBAR_ADDR_Msk) | portGENERAL_PERIPHERALS_REGION ;
-    target->xRegion[3].RASR = (portMPU_REGION_READ_WRITE | portMPU_REGION_EXEC_NEVER) | MPU_RASR_ENABLE_Msk |
-                              ( MPU_RASR_SIZE_Msk & (prvMPUregionSizeEncode(PERIPH_SIZE) << MPU_RASR_SIZE_Pos) );
-} //// end of prvUpdateMPUcheckList
-
-
-// for testing purpose, we copy attributes from region #2 to region #6
-// , and add region #5 to allow both privileged/unprivileged accesses,
-// * 
-static void vModifyMPUregionsForTest( void )
-{
-    extern  UBaseType_t  __SRAM_segment_start__[];
-    extern  UBaseType_t  __SRAM_segment_end__ [];
-    xMPU_REGION_REGS  xRegion;
-    UBaseType_t  ulRegionSizeInBytes = 0;
-    // move attributes from region #2 to region #6
-    vPortGetMPUregion( portPRIVILEGED_SRAM_REGION, &xRegion );
-    xRegion.RBAR &= ~(MPU_RBAR_REGION_Msk);
-    xRegion.RBAR |= MPU_RBAR_VALID_Msk | (portFIRST_CONFIGURABLE_REGION + 1);
-    vPortSetMPUregion( &xRegion );
-    // setup one more MPU region only for unprivileged accesses in this test to SRAM
-    ulRegionSizeInBytes = (UBaseType_t) __SRAM_segment_end__ - (UBaseType_t) __SRAM_segment_start__ ;
-    xRegion.RBAR = ((UBaseType_t) __SRAM_segment_start__  & MPU_RBAR_ADDR_Msk)
-                      | MPU_RBAR_VALID_Msk | portFIRST_CONFIGURABLE_REGION  ;
-    xRegion.RASR = portMPU_REGION_READ_WRITE | MPU_RASR_S_Msk | MPU_RASR_C_Msk | MPU_RASR_B_Msk |
-                     ( MPU_RASR_SIZE_Msk & (prvMPUregionSizeEncode(ulRegionSizeInBytes) << MPU_RASR_SIZE_Pos) )
-                     | MPU_RASR_ENABLE_Msk;
-    vPortSetMPUregion( &xRegion );
-} //// end of vModifyMPUregionsForTest
-
-
-// To declare a new test group in Unity, firstly you use the macro below
-TEST_GROUP( xPortStartScheduler );
-
-
-TEST_SETUP( xPortStartScheduler )
-{
-    unpriv_branch_fail_cnt = 0;
-    uMockPrivVar   = 0xdead;
+TEST_SETUP( StartScheduler ) {
     uMockTickCount = 0;
     ucVisitSVC0Flag = 0;
     expected_value = (RegsSet_chk_t *) unity_malloc( sizeof(RegsSet_chk_t) );
     actual_value   = (RegsSet_chk_t *) unity_malloc( sizeof(RegsSet_chk_t) );
-} // end of TEST_SETUP
+    const TaskParameters_t tsk_params = {
+        .pvTaskCode = vTaskFunction_emoji,
+        .pcName = "E-Mo-Ji",
+        .usStackDepth = TEST_STACK_SIZE,
+        .pvParameters = NULL,
+        .uxPriority = portPRIVILEGE_BIT | (tskIDLE_PRIORITY + 1),
+        .puxStackBuffer = xTaskEmojiStack,
+    };
+    BaseType_t ret = xTaskCreateRestricted(&tsk_params, &taskEmojiHandle);
+    configASSERT(ret == pdPASS);
+}
 
-
-TEST_TEAR_DOWN( xPortStartScheduler )
+TEST_TEAR_DOWN( StartScheduler )
 {
-    // clear the settings of extra regions for this test 
-    xMPU_REGION_REGS  xRegion;
-    xRegion.RBAR = MPU_RBAR_VALID_Msk | portFIRST_CONFIGURABLE_REGION  ;
-    xRegion.RASR = 0;
-    vPortSetMPUregion( &xRegion );
-    xRegion.RBAR = MPU_RBAR_VALID_Msk | (portFIRST_CONFIGURABLE_REGION+1)  ;
-    vPortSetMPUregion( &xRegion );
     // disable interrupt for SVC, SysTick, and Memory Management Fault
     NVIC_SetPriority( SysTick_IRQn, 0 );
     NVIC_SetPriority( PendSV_IRQn , 0 );
@@ -195,42 +132,24 @@ TEST_TEAR_DOWN( xPortStartScheduler )
     // free memory allocated to check lists 
     unity_free( (void *)expected_value ); 
     unity_free( (void *)actual_value   ); 
+    if(stackframes_backup) {
+        unity_free((void *) stackframes_backup);
+        stackframes_backup = NULL;
+        backup_nbytes = 0;
+    }
     expected_value = NULL; 
     actual_value   = NULL; 
+    vTaskDelete(taskEmojiHandle);
+    taskEmojiHandle = NULL;
+    pxCurrentTCB   = NULL;
 } // end of TEST_TEAR_DOWN
 
-
-TEST( xPortStartScheduler , regs_chk )
+TEST(StartScheduler, switch2first_task)
 {
-    portSHORT    idx = 0;
     UBaseType_t  uTickCountUpperBound = 0;
 
     xPortStartScheduler();
-    vModifyMPUregionsForTest();
     TEST_ASSERT_NOT_EQUAL( configMAX_SYSCALL_INTERRUPT_PRIORITY , 0 );
-
-    #if( configASSERT_DEFINED == 1 )
-    {
-        unsigned portCHAR   ucActualMaxNvicIPRx;
-        unsigned portCHAR   ucExpectMaxNvicIPRx;
-        unsigned portSHORT  ucActualMaxPriGroupInAIRCR;
-        unsigned portSHORT  ucExpectMaxPriGroupInAIRCR;
-        // Note: 
-        // NVIC_IPRx in Cortex-M4 takes 8 bits, only upper 4 bits are used,
-        // CMSIS defines __NVIC_PRIO_BITS representing number of bits usesd for
-        // interrupt priority, lower 4 bits of NVIC_IPRx is NOT used.
-        const uint8_t bitMaskNVICIPRx = 0xf << (8 - __NVIC_PRIO_BITS);
-        ucExpectMaxNvicIPRx        = configMAX_SYSCALL_INTERRUPT_PRIORITY & bitMaskNVICIPRx ;
-        ucActualMaxNvicIPRx        = ucGetMaxInNvicIPRx();
-        // interrupt in FreeRTOS doexn't consider sub-priority, SCB_AIRCR.PRIGROUP
-        // should be numerically less than 4, in order to treat all the 8 bits of
-        // NVIC_IPRx as a priority group number.
-        ucExpectMaxPriGroupInAIRCR = (4 - 1) << SCB_AIRCR_PRIGROUP_Pos;
-        ucActualMaxPriGroupInAIRCR = ucGetMaxPriGroupInAIRCR();
-        TEST_ASSERT_EQUAL_UINT8( ucExpectMaxNvicIPRx , ucActualMaxNvicIPRx );
-        TEST_ASSERT_EQUAL_UINT16( ucExpectMaxPriGroupInAIRCR, ucActualMaxPriGroupInAIRCR );
-    }
-    #endif
     // check priority of SysTick, PendSV exception
     expected_value->SysTick_IP = (unsigned portCHAR) configLIBRARY_LOWEST_INTERRUPT_PRIORITY;
     actual_value->SysTick_IP   = (unsigned portCHAR) NVIC_GetPriority( SysTick_IRQn );
@@ -263,60 +182,12 @@ TEST( xPortStartScheduler , regs_chk )
     TEST_ASSERT_EQUAL_UINT32( expected_value->SysTickRegs.CTRL , actual_value->SysTickRegs.CTRL );
     TEST_ASSERT_EQUAL_UINT32( expected_value->SysTickRegs.LOAD , actual_value->SysTickRegs.LOAD );
     uTickCountUpperBound = uMockTickCount + 10;
-    while (uMockTickCount < uTickCountUpperBound)
-    {
+    while (uMockTickCount < uTickCountUpperBound) {
         actual_value->SysTickRegs.VAL = SysTick->VAL;
         TEST_ASSERT_UINT32_WITHIN( ((expected_value->SysTickRegs.LOAD + 1) >> 1),
                                    ((expected_value->SysTickRegs.LOAD + 1) >> 1),
                                    actual_value->SysTickRegs.VAL );
     }
- 
-    // --------- check MPU regions setup  -----------
-    // part 1: 
-    // CPU in Thread mode switches to unprivileged state, then calls the privileged function,
-    // this invalid call should result in HardFault exception.
-    __asm volatile (
-        "mrs  r8 , control  \n"
-        "orr  r8 , r8, #0x1 \n"
-        "msr  control, r8   \n"
-        "dsb  \n"
-        "isb  \n"
-    );
-    prvUpdateMPUcheckList( &expected_value->xMPUsetup );
-    // when CPU jumps back here, it becomes privileged thread mode
-    // (switch the state in our HardFault handler routine)
-    TEST_ASSERT_EQUAL_UINT16( unpriv_branch_fail_cnt , 1 );
-
-    // part 2:
-    // CPU switches back to privileged state, then invoke privileged function again
-    prvUpdateMPUcheckList( &expected_value->xMPUsetup );
-     // the counter should still remain the same
-    TEST_ASSERT_NOT_EQUAL( unpriv_branch_fail_cnt , 2 );
-
-    // part 3: 
-    // CPU in Thread mode switches to unprivileged state again, then accesses a privileged variable,
-    // this invalid access should result in HardFault exception.
-    __asm volatile (
-        "mrs  r8 , control  \n"
-        "orr  r8 , r8, #0x1 \n"
-        "msr  control, r8   \n"
-        "dsb  \n"
-        "isb  \n"
-    );
-    // following line of code will be executed twice, first time it runs at unprivileged thread mode,
-    // , then jump to HardFault exception handler routine, which switches back to privileged mode,
-    // then jump back here, the same line of code, and execute again at privileged thread mode.
-    uMockPrivVar   = 0xacce55ed;
-    TEST_ASSERT_EQUAL_UINT32( uMockPrivVar, 0xacce55ed);
-    TEST_ASSERT_EQUAL_UINT16( unpriv_branch_fail_cnt , 2 );
-
-    // check the MPU regions settings 
-    for(idx=0 ; idx<4 ; idx++)
-    {
-        vPortGetMPUregion(idx, &(actual_value->xMPUsetup.xRegion[idx]) );
-        TEST_ASSERT_EQUAL_UINT32( expected_value->xMPUsetup.xRegion[idx].RBAR , actual_value->xMPUsetup.xRegion[idx].RBAR );
-        TEST_ASSERT_EQUAL_UINT32( expected_value->xMPUsetup.xRegion[idx].RASR , actual_value->xMPUsetup.xRegion[idx].RASR );
-    }
-
     TEST_ASSERT_EQUAL_UINT8( 1, ucVisitSVC0Flag );
 } //// end of test body
+

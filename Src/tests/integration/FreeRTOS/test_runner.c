@@ -18,33 +18,29 @@ void vCreateAllTestTasks(void) {
     #if (configUSE_COUNTING_SEMAPHORES == 1)
         vStartCountSemphrTest( tskIDLE_PRIORITY );
     #endif
-
     #if (configUSE_MUTEXES == 1)
         vStartMutexTestCase1( tskIDLE_PRIORITY );
         #if (configUSE_RECURSIVE_MUTEXES == 1)
             vStartRecurMutexTest( tskIDLE_PRIORITY );
         #endif // end of configUSE_RECURSIVE_MUTEXES
     #endif 
-
     #if (configUSE_TASK_NOTIFICATIONS == 1)
         vStartNotifyTaskTest( tskIDLE_PRIORITY );
     #endif
-
     #if (configUSE_TIMERS == 1)
         vStartSoftwareTimerTest( tskIDLE_PRIORITY );
     #endif
 } // end of vCreateAllTestTasks
 
 
-void vIntegrationTestRTOSISR1(void) {
+void vRTOSTimer3ISR(void) {
     if(xTaskGetSchedulerState() == taskSCHEDULER_RUNNING) {
         vNestInterruptTestISR1();
         vQueueTestCase3ISR1();
         vBinSemphrCase2ISR1();
     }
-} // end of vIntegrationTestRTOSISR1
-
-void vIntegrationTestRTOSISR2(void) {
+}
+void vRTOSTimer4ISR(void) {
     if(xTaskGetSchedulerState() == taskSCHEDULER_RUNNING) {
         vNestInterruptTestISR2();
         vQueueTestCase3ISR2();
@@ -52,19 +48,33 @@ void vIntegrationTestRTOSISR2(void) {
             vNotifyTestISR( );
         #endif //// end of configUSE_TASK_NOTIFICATIONS
     }
-} // end of vIntegrationTestRTOSISR2
-
-BaseType_t vIntegrationTestRTOSMemManageHandler(void) {
+}
+BaseType_t vRTOSMemManageHandler(void) {
     BaseType_t alreadyHandled = pdFALSE;
-    if(xTaskGetSchedulerState() == taskSCHEDULER_RUNNING)
-    {
+    if(xTaskGetSchedulerState() == taskSCHEDULER_RUNNING) {
         #if (configCHECK_FOR_STACK_OVERFLOW > 0)
             alreadyHandled = vStackOvflFaultHandler();
-        #endif //// end of configCHECK_FOR_STACK_OVERFLOW
+        #endif
     }
     return alreadyHandled;
-} // end of vIntegrationTestRTOSMemManageHandler
-
+}
+void vRTOSHardFaultHandler(UBaseType_t *sp) {
+    BaseType_t done = vPortTryRecoverHardFault(sp);
+    if(!done) {
+        while(1);
+    }
+}
+void vRTOSSVCHandler(UBaseType_t *sp) {
+    vPortSVCHandler(sp);
+}
+void vRTOSSysTickHandler(void) {
+    vPortSysTickHandler();
+}
+__attribute__((naked)) void vRTOSPendSVHandler(void) {
+    // vPortPendSVHandler(); the function call in C will be compiled with
+    // branch-link instruction, which may corrupts link register of current task.
+    __asm volatile ("b vPortPendSVHandler  \n");
+}
 
 #if (configUSE_TICK_HOOK > 0)
 void vApplicationTickHook( void )

@@ -14,12 +14,6 @@
 void UNITY_OUTPUT_CHAR(int);
 #endif
 
-// In Unity C unit test, when assertion failure occurs in somewhere of a test case, it will abort
-// the rest of the test case, then jump to next test case.
-// In this applicaiton, the abort function is no longer necessary in integration tests.
-#ifndef UNIT_TEST
-    #error "Unity cannot be used with integration tests"
-#endif
 /* Helpful macros for us to use here in Assert functions */
 #define UNITY_FAIL_AND_BAIL   { Unity.CurrentTestFailed  = 1; UNITY_OUTPUT_FLUSH(); TEST_ABORT(); }
 #define UNITY_IGNORE_AND_BAIL { Unity.CurrentTestIgnored = 1; UNITY_OUTPUT_FLUSH(); TEST_ABORT(); }

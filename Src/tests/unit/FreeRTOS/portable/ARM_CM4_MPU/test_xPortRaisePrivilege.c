@@ -4,32 +4,15 @@
 // by putting the macros PRIVILEGED_FUNCTION and PRIVILEGED_DATA ahead of
 // the privileged function & data. 
 #define MPU_WRAPPERS_INCLUDED_FROM_API_FILE
-// for FreeRTOS
 #include "FreeRTOS.h"
 
 static BaseType_t  *expected_value = NULL;
 static BaseType_t  *actual_value = NULL;
 
-
-
-void TEST_HELPER_xPortRaisePrivilege_SVCentry( void )
-{
-    if( expected_value != NULL ) {
-        __asm volatile(
-            "pop  {lr}            \n"
-            "b    vPortSVCHandler \n"
-        );
-    }
-} //// end of TEST_HELPER_xPortRaisePrivilege_SVCentry
-
-
 // To declare a new test group in Unity, firstly you use the macro below
-TEST_GROUP( xPortRaisePrivilege );
+TEST_GROUP(xPortRaisePrivilege);
 
-
-
-TEST_SETUP( xPortRaisePrivilege )
-{
+TEST_SETUP(xPortRaisePrivilege) {
     expected_value = (BaseType_t *) unity_malloc( sizeof(BaseType_t) );
     actual_value   = (BaseType_t *) unity_malloc( sizeof(BaseType_t) );
     __asm volatile(
@@ -39,11 +22,9 @@ TEST_SETUP( xPortRaisePrivilege )
         "isb      \n"
         :::"memory"
     );
-} // end of TEST_SETUP
+}
 
-
-TEST_TEAR_DOWN( xPortRaisePrivilege )
-{
+TEST_TEAR_DOWN(xPortRaisePrivilege) {
     // free memory allocated to check lists 
     unity_free( (void *)expected_value ); 
     unity_free( (void *)actual_value   ); 
@@ -56,17 +37,18 @@ TEST_TEAR_DOWN( xPortRaisePrivilege )
         "isb      \n"
         :::"memory"
     );
-} // end of TEST_TEAR_DOWN
-
+}
 
 TEST( xPortRaisePrivilege , regs_chk )
 {
     BaseType_t  xState;
     // switch to unprivileged state
     __asm volatile (
+        "push {r8}   \n"
         "mrs  r8 , control  \n"
         "orr  r8 , r8, #0x1 \n"
         "msr  control, r8   \n"
+        "pop  {r8}   \n"
         "dsb  \n"
         "isb  \n"
     );
@@ -86,5 +68,4 @@ TEST( xPortRaisePrivilege , regs_chk )
     xState = xPortRaisePrivilege();
     TEST_ASSERT_EQUAL_INT32( xState , pdFALSE );
 } // end of test body
-
 

@@ -34,62 +34,34 @@ static flagSet_chk_t  *actual_value   = NULL;
 //   generates Hardfault instead of SVCall exception.
 // Based on the description above, we need to check whether the task attempts to temporarily switch to privileged 
 // software on exit of critical section for resetting the privileged register BASEPRI
-void TEST_HELPER_vPortEnterCritical_hardFaultEntry( UBaseType_t *pulSelectedSP )
+void TEST_HELPER_EnterCritical_hardFaultEntry(UBaseType_t *pulSelectedSP)
 {
-    UBaseType_t  forcedHardFault;
-    UBaseType_t  currBasepri;
-    uint8_t        ucSVCnumber      = 0;
-    uint8_t        thumbEncodeInstr = 0;
-    const uint8_t  thumbEncodeSVC   = 0xdf; // the encoded value of SVC in thumb instruction
-
-    if( expected_value != NULL ) {
-        forcedHardFault  = SCB->HFSR & SCB_HFSR_FORCED_Msk;
-        currBasepri      = __get_BASEPRI();
-        // get pc address from exception stack frame, then 
-        // go back to check whether last instrution is SVCall.
-        ucSVCnumber      = ((uint8_t *) pulSelectedSP[6] )[-2];
-        thumbEncodeInstr = ((uint8_t *) pulSelectedSP[6] )[-1];
-        if ((forcedHardFault != pdFALSE) && (currBasepri == configMAX_SYSCALL_INTERRUPT_PRIORITY) && (thumbEncodeInstr==thumbEncodeSVC) && (ucSVCnumber==portSVC_ID_RAISE_PRIVILEGE)) 
-        {
-            actual_value->numSVCalls += 1;
-            __asm volatile (
-                "pop  {lr}               \n"
-                "b    vPortSVCHandler    \n"
-            );
-        }
+    if(expected_value == NULL) {
+        return;
     }
-} //// end of TEST_HELPER_vPortEnterCritical_hardFaultEntry
+    UBaseType_t  forcedHardFault = SCB->HFSR & SCB_HFSR_FORCED_Msk;
+    UBaseType_t  currBasepri = __get_BASEPRI();
+    if (
+        (forcedHardFault != pdFALSE) &&
+        (currBasepri == configMAX_SYSCALL_INTERRUPT_PRIORITY))
+    {
+        actual_value->numSVCalls += 1;
+        vPortSVCHandler(pulSelectedSP);
+    }
+}
 
-
-
-void TEST_HELPER_vPortEnterCritical_SVCentry( void )
-{
+void TEST_HELPER_EnterCritical_SVCentry(void) {
     if( actual_value != NULL ) {
         actual_value->numSVCalls += 1;
-        __asm volatile (
-            "pop  {lr}               \n"
-            "b    vPortSVCHandler    \n"
-        );
     }
-} //// end of TEST_HELPER_vPortEnterCritical_SVCentry
-
-
-
-
-
-void TEST_HELPER_vPortEnterCritical_sysTickEntry ( void )
-{
+}
+void TEST_HELPER_EnterCritical_sysTickEntry(void) {
     if( actual_value != NULL ) {
         actual_value->sharedCounter += 0x1;
     }
-} //// end of TEST_HELPER_vPortEnterCritical_sysTickEntry 
+}
 
-
-
-
-
-static void vModifyMPUregionsForTest( void )
-{
+static void vModifyMPUregionsForTest(void) {
     extern  UBaseType_t  __SRAM_segment_start__[];
     extern  UBaseType_t  __SRAM_segment_end__ [];
     xMPU_REGION_REGS  xRegion;
@@ -109,12 +81,9 @@ static void vModifyMPUregionsForTest( void )
                      ( MPU_RASR_SIZE_Msk & (prvMPUregionSizeEncode(ulRegionSizeInBytes) << MPU_RASR_SIZE_Pos) )
                      | MPU_RASR_ENABLE_Msk;
     vPortSetMPUregion( &xRegion );
-} // end of vModifyMPUregionsForTest
+}
 
-
-
-static void vResetMPUregionsForTest( void )
-{
+static void vResetMPUregionsForTest(void) {
     xMPU_REGION_REGS  xRegion;
     const portSHORT   numRegions = 8;
     portSHORT         idx = 0;
@@ -127,18 +96,13 @@ static void vResetMPUregionsForTest( void )
         xRegion.RBAR = MPU_RBAR_VALID_Msk | idx;
         vPortSetMPUregion( &xRegion );
     }
-} // end of vResetMPUregionsForTest
+}
 
+TEST_GROUP( EnterCritical );
 
-
-// To declare a new test group in Unity, firstly you use the macro below
-TEST_GROUP( vPortEnterCritical );
-
-
-TEST_SETUP( vPortEnterCritical )
-{
+TEST_SETUP( EnterCritical ) {
     // setup extra MPU regions used in this test
-    vModifyMPUregionsForTest( );
+    vModifyMPUregionsForTest();
     expected_value = (flagSet_chk_t *) unity_malloc( sizeof(flagSet_chk_t) );
     actual_value   = (flagSet_chk_t *) unity_malloc( sizeof(flagSet_chk_t) );
     expected_value->sharedCounter = 0;
@@ -166,11 +130,10 @@ TEST_SETUP( vPortEnterCritical )
 } // end of TEST_SETUP
 
 
-TEST_TEAR_DOWN( vPortEnterCritical )
+TEST_TEAR_DOWN( EnterCritical )
 {
-    // raise privilege no matter this test passed or failed.
+    // raise privilege regardless of test result
     xPortRaisePrivilege();
-    // recover BASEPRI
     portENABLE_INTERRUPTS();
     // clear MPU regions used in this test
     vResetMPUregionsForTest();
@@ -194,12 +157,9 @@ TEST_TEAR_DOWN( vPortEnterCritical )
     NVIC_SetPriority( SVCall_IRQn , 0 );
 } // end of TEST_TEAR_DOWN
 
-
-
-
 // it's better to test this function by simulating an unprivileged task 
 // doing something in a critical section
-TEST( vPortEnterCritical , single_critical_section )
+TEST( EnterCritical , single_critical_section )
 {
     BaseType_t   xState;
     UBaseType_t  sharedCounter = 0;
@@ -217,10 +177,7 @@ TEST( vPortEnterCritical , single_critical_section )
     // switch to unprivileged state again
     vPortResetPrivilege( xState );
 
-    // write current shared counter value
-    for(idx=0; idx<countsPerTick; idx++);
     expected_value->sharedCounter = actual_value->sharedCounter;
-    // entering critical section
     vPortEnterCritical();
     {
         // svc exception interrupt in vPortEnterCritical() should work properly
@@ -236,7 +193,6 @@ TEST( vPortEnterCritical , single_critical_section )
             );
         }
     }
-    // leaving critical section
     vPortExitCritical(); 
     // check the sharedCounter, it shouldn't be changed that much in the critical section
     sharedCounter = actual_value->sharedCounter;
@@ -246,12 +202,9 @@ TEST( vPortEnterCritical , single_critical_section )
 } // end of test body
 
 
-
-TEST( vPortEnterCritical , nested_critical_section )
-{
-    UBaseType_t  sharedCounter = 0;
+TEST( EnterCritical , nested_critical_section ) {
+    UBaseType_t  sharedCounter = 0, idx = 0;
     UBaseType_t  countsPerTick = SysTick->LOAD;
-    UBaseType_t  idx = 0;
 
     // force to switch to unprivileged state
     vPortResetPrivilege( pdTRUE );
@@ -259,7 +212,6 @@ TEST( vPortEnterCritical , nested_critical_section )
     for(idx=0; idx<countsPerTick; idx++);
     expected_value->sharedCounter = actual_value->sharedCounter;
     
-    // entering the first critical section
     vPortEnterCritical();
     {
         // when enter/exit the critical section, it should jump to SVCall handler routine.
@@ -284,7 +236,7 @@ TEST( vPortEnterCritical , nested_critical_section )
         for(idx=0; idx<(countsPerTick << 10) ; idx++) {
             TEST_ASSERT_EQUAL_UINT32( expected_value->sharedCounter, actual_value->sharedCounter );
         }
-    } // leave the first critical section
+    }
     vPortExitCritical();
     // read shared counter again  
     sharedCounter = actual_value->sharedCounter;
@@ -292,5 +244,4 @@ TEST( vPortEnterCritical , nested_critical_section )
     TEST_ASSERT_EQUAL_UINT32( expected_value->numSVCalls, actual_value->numSVCalls );
     TEST_ASSERT_UINT32_WITHIN( 0x3, expected_value->sharedCounter, sharedCounter );
 } // end of test body
-
 

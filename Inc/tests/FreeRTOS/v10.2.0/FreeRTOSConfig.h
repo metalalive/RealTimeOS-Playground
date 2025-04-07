@@ -122,6 +122,9 @@
 #define configCHECK_FOR_STACK_OVERFLOW           1
 #define configENABLE_MPU                         0 // TODO, enable MPU test
 
+// for unit-test , TODO, separate config files for different apps
+#define configUSE_TRACE_FACILITY                 1
+
 /* Co-routine definitions. */
 #define configUSE_CO_ROUTINES                    0
 #define configMAX_CO_ROUTINE_PRIORITIES          ( 2 )
@@ -169,19 +172,6 @@ header file. */
 /* USER CODE BEGIN 1 */
 #define configASSERT( x ) if ((x) == 0) {taskDISABLE_INTERRUPTS(); for( ;; );} 
 /* USER CODE END 1 */
-
-// Definitions that map (for the FreeRTOS port) interrupt handlers to their CMSIS standard names. 
-// the entry to SVC execution handler routine
-#ifndef UNIT_TEST
-    #define vPortSVCHandler     SVC_Handler
-    // the entry to PendSV exception handler routine
-    #define vPortPendSVHandler  PendSV_Handler
-    // IMPORTANT: This define is commented when used with STM32Cube firmware, when timebase is systick,
-    //            to prevent overwriting SysTick_Handler defined within STM32Cube HAL 
-    #define vPortSysTickHandler  SysTick_Handler
-    // the entry to HardFault exception handler routine
-    #define vPortHardFaultHandler  HardFault_Handler
-#endif //// end of UNIT_TEST
 
 /* USER CODE BEGIN Defines */   	      
 /* Section where parameter definitions can be added (for instance, to override default ones in FreeRTOS.h) */

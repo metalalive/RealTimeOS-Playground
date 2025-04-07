@@ -18,8 +18,8 @@ void vApplicationStackOverflowHook( TaskHandle_t pxCurrentTCBhandle, const portC
     // to its stack (context switch). It cannot instantly detect stack overflow immediately after
     // a task writes a location out of its stack, to approach instant stack overflow detection,
     // the hardware component like MPU should be applied. 
-} //// end of vApplicationStackOverflowHook()
-#endif //// end of configCHECK_FOR_STACK_OVERFLOW
+}
+#endif
 
 static UBaseType_t vRecurFibonacciNum(unsigned portSHORT n) {
     if(n < 2) {

@@ -1,10 +1,5 @@
-/* USER CODE BEGIN Header */
-/* USER CODE END Header */
-
-#include "test_entry.h"
-
-// hardware-specific Initialization
-void hw_layer_init(void);
+#include "generic.h"
+#include "test_runner.h"
 
 static void TestEnd(void) {
     while(1);

@@ -76,8 +76,6 @@ extern void * volatile pxCurrentTCB;
 PRIVILEGED_DATA static UBaseType_t uxCriticalNesting = 0;
 
 
-
-
 StackType_t  *pxPortInitialiseStack( StackType_t *pxTopOfStack, TaskFunction_t pxTaskStartFunc, void *pvParams, BaseType_t xRunPrivileged)
 {
     // simulate the stack frame for exception return & context switch,
@@ -126,21 +124,15 @@ StackType_t  *pxPortInitialiseStack( StackType_t *pxTopOfStack, TaskFunction_t p
 } //// end of pxPortInitialiseStack
 
 
-
-void vPortYield()
-{
+void vPortYield(void) {
     SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;
     __asm volatile( "dsb" ::: "memory" );
     __asm volatile( "isb" );
-} // end of vPortYield
+}
 
-
-
-void  vPortSetBASEPRI( UBaseType_t ulNewMaskValue )
-{
+void  vPortSetBASEPRI(UBaseType_t ulNewMaskValue) {
     __set_BASEPRI( ulNewMaskValue );
-} // end of vPortSetBASEPRI
-
+}
 
 void  vPortRaiseBASEPRI( void )
 { // let compiler decide which registers to use
@@ -149,9 +141,7 @@ void  vPortRaiseBASEPRI( void )
         "isb               \n"
         "dsb               \n"
     );
-} // end of vPortRaiseBASEPRI
-
-
+}
 
 UBaseType_t ulPortRaiseBASEPRI( void )
 { // let compiler decide which registers to use
@@ -162,26 +152,18 @@ UBaseType_t ulPortRaiseBASEPRI( void )
         "dsb    \n"
     );
     return  ulOriginBasepri;
-} // end of ulPortRaiseBASEPRI
+}
 
-
-
-
-UBaseType_t  prvMPUregionSizeEncode(UBaseType_t ulSizeInBytes)
-{
+UBaseType_t  prvMPUregionSizeEncode(UBaseType_t ulSizeInBytes) {
     UBaseType_t  MPU_RASR_size  = 4; // 2**(4+1)
     UBaseType_t  ulSize         = (ulSizeInBytes - 1) >> 5;
     // start from smallest allowed size of RASR.SIZE : 32 Bytes
-    while(ulSize > 0)
-    {
+    while(ulSize > 0) {
         ulSize = ulSize >> 1;
         MPU_RASR_size++;
     }
     return MPU_RASR_size;
 }
-
-
-
 
 // [Note]
 // carefully implement this function & recheck disassembly code,
@@ -199,7 +181,6 @@ void prvRestoreContextOfFirstTask( void )
         "msr msp, %0    \n"
         ::"r"(init_sp) :
     );
-
     // restore MPU region base address & attributes from task TCB to MPU
     volatile xMPU_SETTINGS *next_task_mpu_setup = 
            (volatile xMPU_SETTINGS *)((UBaseType_t *)pxCurrentTCB + 1);
@@ -219,7 +200,6 @@ void prvRestoreContextOfFirstTask( void )
         :: "r"(next_task_mpu_setup), "r"(&(MPU->RBAR))
         :
     );
-
     // ensure we have one task ready to run (pxCurrentTCB in task.c) 
     // read stack pointer of pxCurrentTCB, pop the stack frames to 
     // register
@@ -241,12 +221,7 @@ void prvRestoreContextOfFirstTask( void )
 } //// end of prvRestoreContextOfFirstTask( void )
 
 
-
-
-
-
-void vPortPendSVHandler( void )
-{
+void vPortPendSVHandler(void) {
     // these are the addresses to stack pointer, not its content.
     StackType_t *prev_tsk_sp_addr = (StackType_t *)pxCurrentTCB;
     StackType_t *next_tsk_sp_addr = NULL ;
@@ -316,7 +291,7 @@ void vPortPendSVHandler( void )
         "msr    control, r1      \n"
         ::"r"(next_tsk_sp_addr):
     );
-} //// end of vPortPendSVHandler
+} // end of vPortPendSVHandler
 
 
 void vPortSetMPUregion ( xMPU_REGION_REGS *xRegion )
@@ -385,10 +360,6 @@ PRIVILEGED_FUNCTION void prvSetupMPU( void )
 } // end of prvSetupMPU
 
 
-
-
-
-
 BaseType_t xPortStartScheduler( void )
 {
     if (configMAX_SYSCALL_INTERRUPT_PRIORITY == 0) 
@@ -447,12 +418,12 @@ BaseType_t xPortStartScheduler( void )
     // enable interrupt, fault eception
     // and generate SVC exception to start scheduler
     __asm volatile(
-        "cpsie i               \n" 
-        "cpsie f               \n" 
-        "dsb                   \n" 
-        "isb                   \n"
-        "svc      %0           \n"
-        "nop                   \n"
+        "cpsie i \n" 
+        "cpsie f \n" 
+        "dsb     \n" 
+        "isb     \n"
+        "svc  %0 \n"
+        "nop     \n"
         ::"i"(portSVC_ID_START_SCHEDULER)
         :"memory"
     );
@@ -461,61 +432,47 @@ BaseType_t xPortStartScheduler( void )
 } // end of xPortStartScheduler
 
 
-
-
-PRIVILEGED_FUNCTION void prvRaisePrivilege( void )
-{
-    UBaseType_t control_reg;
-    control_reg = __get_CONTROL();
+PRIVILEGED_FUNCTION void prvRaisePrivilege(void) {
+    UBaseType_t control_reg = __get_CONTROL();
     control_reg = control_reg & ~CONTROL_nPRIV_Msk;
     __set_CONTROL( control_reg );
-} //// end of prvRaisePrivilege
+}
 
-
-PRIVILEGED_FUNCTION void vPortSVCHandler( void )
-{
-    uint32_t  *pulSelectedSP         = NULL;
-    uint8_t    ucSVCnumber           = 0;
-    // check which sp we are using
-    __asm volatile (
-        "tst     lr, #0x4  \n"
-        "ite     eq        \n"
-        "mrseq   %0, msp   \n"
-        "mrsne   %0, psp   \n"
-        :"=r"(pulSelectedSP) ::
-    );
+PRIVILEGED_FUNCTION void vPortSVCHandler(UBaseType_t *pulSelectedSP) {
     // get pc address from exception stack frame, then 
     // go back to find last instrution's opcode (svn <NUMBER>)
-    ucSVCnumber = ((uint8_t *) pulSelectedSP[6] )[-2];
+    uint8_t ucSVCnumber = ((uint8_t *) pulSelectedSP[6])[-2];
     switch(ucSVCnumber) {
         case portSVC_ID_START_SCHEDULER:
-            __asm volatile ("b prvRestoreContextOfFirstTask  \n");
+        { // freeRTOS enters this statement exactly once on starting scheduler,
+          // return directly from entire exception handler then swtich to 
+          // first task (no need to consider main thread's stack)
+            UBaseType_t exception_return = pulSelectedSP[-1];
+            __asm volatile(
+                "mov  lr,  %0 \n"
+                "b    prvRestoreContextOfFirstTask  \n"
+                ::"r"(exception_return):
+            );
             break;
+        }
         case portSVC_ID_YIELD:
             __asm volatile ("b vPortYield  \n");
             break;
         case portSVC_ID_RAISE_PRIVILEGE:
-            __asm volatile ("b prvRaisePrivilege  \n");
+            prvRaisePrivilege();
             break;
         default : 
             break;
-    }; // end of switch statement.
-} // end of vPortSVCHandler
+    };
+}
 
-
-
-void vPortEndScheduler( void )
-{
+void vPortEndScheduler(void) {
     // Not implemented in ports where there is nothing to return to.
     // it simply goes to infinite loop.
     for(;;);
 }
 
-
-
-
-BaseType_t  xPortRaisePrivilege( void )
-{
+BaseType_t  xPortRaisePrivilege(void) {
     BaseType_t  privilegeRaised = pdFALSE;
     UBaseType_t  control_reg = __get_CONTROL();
     // if CPU is currently in unprivileged state, then we invoke SVCall
@@ -526,73 +483,51 @@ BaseType_t  xPortRaisePrivilege( void )
         privilegeRaised = pdTRUE;
     }
     return privilegeRaised;
-} // end of xPortRaisePrivilege
+}
 
-
-
-
-void vPortResetPrivilege( BaseType_t privWasRaised )
-{
+void vPortResetPrivilege(BaseType_t privWasRaised) {
     UBaseType_t  control_reg;
-    if( privWasRaised == pdTRUE)
-    {
+    if( privWasRaised == pdTRUE) {
         __asm volatile ("dsb \n");
         control_reg  = __get_CONTROL();
         control_reg  = control_reg | CONTROL_nPRIV_Msk;
         __set_CONTROL( control_reg );
     }
-} // end of vPortResetPrivilege
+}
 
-
-
-
-BaseType_t  xIsPrivileged( void )
-{
+BaseType_t  xIsPrivileged(void) {
     UBaseType_t control_reg;
     control_reg = __get_CONTROL();
     control_reg = control_reg & CONTROL_nPRIV_Msk;
     return control_reg;
-} // end of xIsPrivileged
+}
 
-
-
-void vPortEnterCritical( void )
-{
-    BaseType_t xRunningPrivileged;
-    xRunningPrivileged = xPortRaisePrivilege();
+void vPortEnterCritical(void) {
+    BaseType_t xRunningPrivileged = xPortRaisePrivilege();
     if (uxCriticalNesting == 0) {
         portDISABLE_INTERRUPTS();
     }
     uxCriticalNesting++;
     vPortResetPrivilege( xRunningPrivileged );
-} // end of vPortEnterCritical
+}
 
-
-
-void vPortExitCritical( void )
-{
+void vPortExitCritical( void ) {
     BaseType_t xRunningPrivileged = xPortRaisePrivilege();
     uxCriticalNesting--;
     if (uxCriticalNesting == 0) {
         portENABLE_INTERRUPTS();
     }
     vPortResetPrivilege( xRunningPrivileged );
-} // end of vPortExitCritical
+}
 
-
-
-void vPortSysTickHandler( void )
-{
-    UBaseType_t ulOriginBasepri;
-    ulOriginBasepri = portSET_INTERRUPT_MASK_FROM_ISR();
+void vPortSysTickHandler(void) {
+    UBaseType_t ulOriginBasepri = portSET_INTERRUPT_MASK_FROM_ISR();
     if( xTaskIncrementTick() != pdFALSE)
     { // yielding function will take effect on exit of SysTick exception
         vPortYield();
     }
     portCLEAR_INTERRUPT_MASK_FROM_ISR( ulOriginBasepri );
-} //// end of vPortSysTickHandler
-
-
+}
 
 
 ///void vPortStoreTaskMPUSettings( xMPU_SETTINGS *xMPUSettings, const struct xMEMORY_REGION * const xRegions, StackType_t *pxBottomOfStack, uint32_t ulStackDepth )
@@ -663,20 +598,14 @@ void vPortStoreTaskMPUSettings( xMPU_SETTINGS *xMPUSettings,
 } //// end of vPortStoreTaskMPUSettings
 
 
-
-
 #if( configASSERT_DEFINED == 1 )
-unsigned portCHAR ucGetMaxInNvicIPRx( void )
-{
+unsigned portCHAR ucGetMaxInNvicIPRx( void ) {
     return ucMaxInNvicIPRx;
 } 
 
-unsigned portSHORT ucGetMaxPriGroupInAIRCR( void )
-{
+unsigned portSHORT ucGetMaxPriGroupInAIRCR(void) {
     return  ucMaxPriGroupInAIRCR;
 }
-
-
 
 void vPortValidateInterruptPriority( void )
 {
@@ -733,13 +662,6 @@ void vPortValidateInterruptPriority( void )
 #endif // end of configASSERT_DEFINED
 
 
-
-
-
-
-
-
-
 //---------------------------------------------------------------------
 // Extra functions that are NOT included in FreeRTOS official release 
 //---------------------------------------------------------------------
@@ -770,65 +692,33 @@ void vPortValidateInterruptPriority( void )
 //     * on exit of a critical section for resetting the privileged 
 //       register BASEPRI
 //     * on the entry of nested critical section
-void vPortCheckHardFaultCause( UBaseType_t  *pulSelectedSP )
-{
-    UBaseType_t  faultDiagnosis;
-    uint8_t      thumbEncodeInstr = 0;
+BaseType_t vPortTryRecoverHardFault(UBaseType_t *pulSelectedSP) {
     // the encoded value of SVC in thumb instruction
     const uint8_t  thumbEncodeSVC   = 0xdf; 
     // filter out any cause that is NOT related to forced HardFault
-    faultDiagnosis  = SCB->HFSR & SCB_HFSR_FORCED_Msk;
-    if(faultDiagnosis == pdFALSE) return;
+    UBaseType_t  faultDiagnosis = SCB->HFSR & SCB_HFSR_FORCED_Msk;
+    if(faultDiagnosis == pdFALSE)
+        return 0;
     // filter out any fault caused by bus (BFSR), memory management
     // (MMFSR), or improper usage (UFSR)
     faultDiagnosis  = SCB->CFSR ;
-    if(faultDiagnosis != 0x0) return;
+    if(faultDiagnosis != 0x0)
+        return 0;
     // further check if BASEPRI matches configMAX_SYSCALL_INTERRUPT_PRIORITY
     faultDiagnosis  = 0x0;
     faultDiagnosis  = __get_BASEPRI();
-    if(faultDiagnosis != configMAX_SYSCALL_INTERRUPT_PRIORITY) return;
+    if(faultDiagnosis != configMAX_SYSCALL_INTERRUPT_PRIORITY)
+        return 0;
     // get pc address from exception stack frame, then 
     // go back to check whether last instrution is SVCall.
-    thumbEncodeInstr = ((uint8_t *) pulSelectedSP[6] )[-1];
+    uint8_t  thumbEncodeInstr = ((uint8_t *) pulSelectedSP[6] )[-1];
     // check if a task requests specific SVCall service at critical section.
-    if (thumbEncodeInstr==thumbEncodeSVC) 
-    {
-        __asm volatile (
-            // pop a stack item to lr, it should be exception return address
-            // then calls SVC handler routine, jump back to task program
-            // after that.
-            "pop  {lr}             \n"
-            "b    SVC_Handler      \n"
-        );
+    if (thumbEncodeInstr==thumbEncodeSVC) {
+        vPortSVCHandler(pulSelectedSP);
+        return 1;
     }
-} //// end of vPortCheckHardFaultCause
-
-
-
-
-void vPortHardFaultHandler( void )
-{
-    // check which sp we are using
-    __asm volatile (
-        "tst     lr, #0x4  \n"
-        "ite     eq        \n"
-        "mrseq   r0, msp   \n"
-        "mrsne   r0, psp   \n"
-        "push    {lr}  \n"
-        // for few reasons, a HardFault can be fixed since we didn't
-        // enable other types of exception (e.g. memManage fault, bus fault 
-        // , SVCall blocked by BASEPRI), following sub-routine recovers
-        // from such HardFault then jump back to task program code
-        "bl      vPortCheckHardFaultCause  \n"
-        "pop     {lr}  \n"
-    );
-    // any other cause to HardFault leads to program crash.
-    for(;;); 
-} // end of vPortHardFaultHandler
-
-
-
-
+    return 0;
+}
 
 // -------------------- tickless idle --------------------
 // For brief introduction, please read description in portmacro.h
@@ -919,16 +809,11 @@ __weak void  vPortSuppressTicksAndSleep( TickType_t xExpectedIdleTime )
 
 #if( configGENERATE_RUN_TIME_STATS == 1 )
 // functions required while configGENERATE_RUN_TIME_STATS is set to 1.
-__weak void vCfgTimerForRuntimeStats(void)
-{
-} //// end of vCfgTimerForRuntimeStats
+__weak void vCfgTimerForRuntimeStats(void) {}
 
-
-__weak unsigned long ulGetRuntimeCounterVal(void)
-{
+__weak unsigned long ulGetRuntimeCounterVal(void) {
     return 0;
-} //// end of ulGetRuntimeCounterVal
+}
 
 #endif //// end of configGENERATE_RUN_TIME_STATS
-
 

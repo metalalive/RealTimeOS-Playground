@@ -1,10 +1,6 @@
+#include "generic.h"
 #include "stm32f4xx_hal.h"
 #include "FreeRTOSConfig.h"
-
-// implemented at RTOS layer
-void vIntegrationTestRTOSISR1(void);
-void vIntegrationTestRTOSISR2(void);
-int vIntegrationTestRTOSMemManageHandler(void);
 
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
@@ -12,22 +8,6 @@ TIM_HandleTypeDef htim4;
 static void Error_Handler(void) {
     /* User can add his own implementation to report the HAL error return state */
     while(1);
-}
-
-// overwrite weak function declarations in other files
-void TIM3_IRQHandler(void) {
-    vIntegrationTestRTOSISR1();
-    HAL_TIM_IRQHandler(&htim3);
-}
-void TIM4_IRQHandler(void) {
-    vIntegrationTestRTOSISR2();
-    HAL_TIM_IRQHandler(&htim4);
-}
-void MemManage_Handler(void) {
-    int alreadyHandled = vIntegrationTestRTOSMemManageHandler();
-    if(!alreadyHandled) {
-        Error_Handler();
-    }
 }
 
 void SystemClock_Config(void) {
@@ -63,20 +43,29 @@ static void MX_GPIO_Init(void) {
     __HAL_RCC_GPIOC_CLK_ENABLE();
     __HAL_RCC_GPIOA_CLK_ENABLE();
     __HAL_RCC_GPIOB_CLK_ENABLE();
-    /*Configure GPIO pins : PB4 PB5 */
+
+    /*Configure GPIO pins : PB4 PB5 as input source */
     GPIO_InitStruct.Pin = GPIO_PIN_4|GPIO_PIN_5;
     GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    // normally the input pin should be set to `GPIO_NOPULL`, let external
+    // input device pull the state , since PB4 pin defaults (aka input-floating mode
+    // after reset) to nJTRST (active-low JTAG reset pin), and this is only for
+    // testing purpose, pull-down is set here to avoid pending interrupt
+    // affecting other test cases
+    GPIO_InitStruct.Pull = GPIO_PULLDOWN;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-    /* EXTI interrupt init*/
-    // [TODO] 
-    // timer interrupt will cause Hardfault error in SVC exception
-    // we when perform unit test for FreeRTOS port, we will uncommnet
-    // following line of code to figure out the problem later.
     HAL_NVIC_SetPriority(EXTI4_IRQn, 13, 0);
+    
+    // strangely there is always pending interrupt raising immediately after
+    // GPIO initialization .
+    __HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_4);
+    
+    // set up EXTI interrupt without enabling it, currently this application
+    // does not really needs to integrate with external hardware components.
+    HAL_NVIC_DisableIRQ(EXTI4_IRQn);
     // HAL_NVIC_SetPriority(EXTI4_IRQn, configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY + 0x1, 0);
-    // HAL_NVIC_EnableIRQ(EXTI4_IRQn);
-}
+    NVIC_ClearPendingIRQ(EXTI4_IRQn);
+} // end of MX_GPIO_Init
 
 /**
   * @brief  Period elapsed callback in non blocking mode
@@ -96,9 +85,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 void MX_TIM3_Init(void) {
     TIM_ClockConfigTypeDef sClockSourceConfig = {0};
     TIM_MasterConfigTypeDef sMasterConfig = {0};
+    uint32_t uwTimclock = 0, uwPrescalerValue = 0;
+    
+    __HAL_RCC_TIM2_CLK_ENABLE();
+    uwTimclock = HAL_RCC_GetPCLK1Freq();
+    /* Compute the prescaler value to have TIM2 counter clock equal to 1MHz */
+    uwPrescalerValue = (uint32_t) ((uwTimclock / 1000000) + 13);
 
     htim3.Instance = TIM3;
-    htim3.Init.Prescaler = 0;
+    htim3.Init.Prescaler = uwPrescalerValue;
     htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
     htim3.Init.Period = 1000000 / 6 ;
     htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
