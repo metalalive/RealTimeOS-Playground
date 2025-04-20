@@ -108,9 +108,16 @@ TEST_GROUP_RUNNER(FreeRTOS_v10_2_port) {
     RUN_TEST_CASE( pxPortInitialiseStack, initedStack_unprivileged );
     RUN_TEST_CASE( TicklessSleepBareMetal , ok );
     RUN_TEST_CASE( TicklessSleepRTOS , ok );
-    RUN_TEST_CASE( PortPendSVHandler, cs_with_fp );
     RUN_TEST_CASE( PortPendSVHandler, cs_without_fp );
+    RUN_TEST_CASE( PortPendSVHandler, cs_with_fp );
     RUN_TEST_CASE( SysTickInterrupt, raise_ok )
+    RUN_TEST_CASE( AnalogDigitalConvertor , loopback_ok );
+    RUN_TEST_CASE( UARTbareMetal , loopback_ok );
+    RUN_TEST_CASE( SPIbareMetal , loopback_fullduplex_dma );
+    RUN_TEST_CASE( SPIbareMetal , loopback_fullduplex_blocking );
+    RUN_TEST_CASE( SPIbareMetal , loopback_master2slave );
+    RUN_TEST_CASE( I2CbareMetal , loopback_nonblocking_itr );
+    RUN_TEST_CASE( I2CbareMetal , loopback_nonblocking_dma );
     RUN_TEST_CASE( xPortRaisePrivilege , regs_chk );
     RUN_TEST_CASE( TaskMPUSetup , with_given_region );
     RUN_TEST_CASE( TaskMPUSetup , without_given_region );

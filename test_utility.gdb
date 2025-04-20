@@ -1,10 +1,4 @@
 
-define reload_image
-    monitor  reset
-    monitor  halt
-    load
-end
-
 define stm32f4_inspect_systick
     print "--- SysTick config ---"
     print /x *(int (*) [4]) 0xe000e010
@@ -24,6 +18,11 @@ define stm32f4_inspect_nvic
     printf "NVIC_ICPR0 : 0x%x \n",  *(int *) 0xe000e280
     printf "NVIC_IABR0 : 0x%x \n", *(int *) 0xe000e300
     printf "NVIC_IPR7  : 0x%x \n", *((int *) 0xe000e400 + 8 - 1)
+    print "NVIC_ISERx : \n"
+    print /x *(int (*) [16]) 0xe000e100
+end
+
+define stm32f4_inspect_tim3
     print "------- TIM3 registers -------"
     print htim3
     print "below are the first 16 registers, from 0x40000400 to 0x4000043C"
@@ -33,8 +32,34 @@ end
 
 define stm32f4_inspect_exti
     print "------- EXTI -------"
-    printf "from 0x40013c00 to 0x40013c1c"
+    printf "from 0x40013c00 to 0x40013c1c \n"
     print /x *(int (*) [8]) 0x40013c00
+end
+
+define stm32f4_inspect_spi
+    print "------- SPI1 -------"
+    print "starts from CR1, CR2, SR, DR : \n"
+    print /x *(int (*) [4]) 0x40013000
+    print "------- SPI2 -------"
+    print "starts from CR1, CR2, SR, DR : \n"
+    print /x *(int (*) [4]) 0x40003800
+end
+
+define stm32f4_inspect_i2c
+    print "------- I2C3 -------"
+    print "CR1, CR2, OAR1, OAR2, DR, SR1, SR2, CCR : \n"
+    print /x *(int (*) [8]) 0x40005c00
+    print "TRISE, FLTR : \n"
+    print /x *(int (*) [2]) 0x40005c20
+end
+
+define stm32f4_inspect_dma
+    print "------- DMA1 common -------"
+    print "LISR, HISR, LIFCR, HIFCR : \n"
+    print /x *(int (*) [4]) 0x40026000
+    print "------- DMA1 Stream4 -------"
+    print "CR, NDTR, PAR, M0AR, M1AR, FCR : \n"
+    print /x *(int (*) [6]) 0x40026070
 end
 
 define stm32f4_inspect_misc
@@ -57,6 +82,7 @@ define stm32f4_inspect_regs
     stm32f4_inspect_systick
     stm32f4_inspect_exti
     stm32f4_inspect_nvic
+    stm32f4_inspect_tim3
     stm32f4_inspect_misc
 end
 
@@ -128,8 +154,15 @@ end
 
 file    build/stm32_port_freertos_v10.2-utest.elf
 target  remote localhost:3333
-reload_image
+monitor  reset
+monitor  halt
+load
 break   TestEnd
+
+
+break  Src/tests/unit/baremetal/stm32f4xx/test_I2C.c:154
+break  I2C_ITError
+
 # stm32f4_breakpoint_setup
 info breakpoints
 

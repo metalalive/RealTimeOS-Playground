@@ -34,6 +34,7 @@
 /* USER CODE END Header */
 
 /* Includes ------------------------------------------------------------------*/
+#include "assert.h"
 #include "hal_init.h"
 #include "stm32f4xx_it.h"
 
@@ -44,8 +45,12 @@ int  vRTOSMemManageHandler(void);
 void vRTOSSysTickHandler(void);
 
 /* External variables --------------------------------------------------------*/
-extern TIM_HandleTypeDef htim3;
-extern TIM_HandleTypeDef htim4;
+extern TIM_HandleTypeDef htim3, htim4;
+extern UART_HandleTypeDef huart1;
+extern SPI_HandleTypeDef  hspi1, hspi2;
+extern I2C_HandleTypeDef  hi2c1, hi2c3;
+extern DMA_HandleTypeDef hdma_spi1_tx, hdma_spi1_rx, hdma_spi2_tx, hdma_spi2_rx;
+extern DMA_HandleTypeDef hdma_i2c1_tx, hdma_i2c1_rx, hdma_i2c3_tx, hdma_i2c3_rx;
 
 /******************************************************************************/
 /*           Cortex-M4 Processor Interruption and Exception Handlers          */ 
@@ -130,5 +135,107 @@ void TIM3_IRQHandler(void) {
 void TIM4_IRQHandler(void) {
     vRTOSTimer4ISR();
     HAL_TIM_IRQHandler(&htim4);
+}
+
+void USART1_IRQHandler(void) {
+    HAL_UART_IRQHandler(&huart1);
+}
+
+__weak void App_SPI_ContinueCallback(SPI_HandleTypeDef *hspi) {
+}
+
+void SPI1_IRQHandler(void) {
+    HAL_SPI_IRQHandler(&hspi1);
+    App_SPI_ContinueCallback(&hspi1);
+}
+void SPI2_IRQHandler(void) {
+    HAL_SPI_IRQHandler(&hspi2);
+    App_SPI_ContinueCallback(&hspi2);
+}
+
+void I2C1_EV_IRQHandler(void) {
+    HAL_I2C_EV_IRQHandler(&hi2c1);
+}
+void I2C3_EV_IRQHandler(void) {
+    HAL_I2C_EV_IRQHandler(&hi2c3);
+}
+void I2C1_ER_IRQHandler(void) {
+    HAL_I2C_ER_IRQHandler(&hi2c1);
+}
+void I2C3_ER_IRQHandler(void) {
+    HAL_I2C_ER_IRQHandler(&hi2c3);
+}
+
+void DMA2_Stream0_IRQHandler(void) {
+    HAL_DMA_IRQHandler(&hdma_spi1_rx);
+}
+void DMA2_Stream3_IRQHandler(void) {
+    HAL_DMA_IRQHandler(&hdma_spi1_tx);
+}
+void DMA1_Stream0_IRQHandler(void) {
+    HAL_DMA_IRQHandler(&hdma_i2c1_rx);
+}
+void DMA1_Stream1_IRQHandler(void) {
+    HAL_DMA_IRQHandler(&hdma_i2c3_rx);
+}
+void DMA1_Stream3_IRQHandler(void) {
+    HAL_DMA_IRQHandler(&hdma_spi2_rx);
+}
+
+#if 0
+static uint32_t dbg_i2c3_tx_dma[4] = {0};
+static uint32_t dbg_dma_feif_cnt = 0;
+
+static void dbg_snapshot_dma1_stream4(void) {
+    uint32_t tmp_hisr = DMA1->HISR;
+    uint32_t mskerr_hisr = 0x4f;
+    uint32_t errs_hisr = tmp_hisr & mskerr_hisr;
+    uint32_t tmp_SxCR = DMA1_Stream4->CR;
+    if(errs_hisr != 0) {
+        dbg_i2c3_tx_dma[0] = tmp_hisr;
+        dbg_i2c3_tx_dma[1] = tmp_SxCR;
+        dbg_i2c3_tx_dma[2] = DMA1_Stream4->NDTR;
+        dbg_i2c3_tx_dma[3] = DMA1_Stream4->FCR;
+        if (chn == DMA_CHANNEL_3) {
+            if((errs_hisr & DMA_HISR_FEIF4) != RESET) {
+                dbg_dma_feif_cnt++;
+            }
+        }
+    }
+}
+#endif
+
+void DMA1_Stream4_IRQHandler(void) {
+    /*
+     Single IRQ line, multiple handles: Both hdma_spi2_tx and hdma_i2c3_tx
+     share DMA1_Stream4, so the NVIC only raises one IRQ.
+
+     By calling HAL_DMA_IRQHandler() on each handle in turn, the HAL driver’s
+     flag‐testing macros (__HAL_DMA_GET_FLAG) detect which peripheral’s
+     transfer has actually completed or errored, clear the relevant bits, and
+     invoke the corresponding HAL callbacks (HAL_SPI_TxCpltCallback or
+     HAL_I2C_MasterTxCpltCallback)
+     * */
+    uint32_t tmp_SxCR = DMA1_Stream4->CR;
+    uint32_t chn = tmp_SxCR & DMA_SxCR_CHSEL;
+#if 0
+    dbg_snapshot_dma1_stream4();
+#endif
+    // FIXME, TODO
+    // FIFO error interrupt might occurs occasionally due to timing issue at hardware level
+    // where the memory bus has not been granted before a peripheral request occurs
+    switch (chn) {
+        case DMA_CHANNEL_0:
+            HAL_DMA_IRQHandler(&hdma_spi2_tx);
+            break;
+        case DMA_CHANNEL_3:
+            HAL_DMA_IRQHandler(&hdma_i2c3_tx);
+            break;
+        default:
+            assert(0);
+    }
+}
+void DMA1_Stream6_IRQHandler(void) {
+    HAL_DMA_IRQHandler(&hdma_i2c1_tx);
 }
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

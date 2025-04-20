@@ -8,9 +8,11 @@
 #include "task.h"
 #undef MPU_WRAPPERS_INCLUDED_FROM_API_FILE
 
-#define TEST_STACK_SIZE  0x40
+#define TEST_STACK_SIZE  0x60
 #define TEST_FLOAT_POINT_ENABLE   1
 #define TEST_FLOAT_POINT_DISABLE  0
+#define NUM_BASIC_FRAMES    10
+#define NUM_EXT_FP_FRAMES   17
 
 extern volatile void *pxCurrentTCB;
 // in this test, task A-one is a mirror of main-thread task,
@@ -20,8 +22,8 @@ static TaskHandle_t taskATwoHandle = NULL;
 
 // Variable to save the initial context pointer for task A-one.
 // Compare it after the context switch to verify that its context was saved.
-static StackType_t xTaskOneStack[TEST_STACK_SIZE] = {0};
-static StackType_t xTaskTwoStack[TEST_STACK_SIZE] = {0};
+static StackType_t *xTaskOneStack = NULL;
+static StackType_t *xTaskTwoStack = NULL;
 
 // bit 0, PendSV handler
 // bit 1, task A-two
@@ -99,6 +101,8 @@ __attribute__((naked)) void TEST_HELPER_vPortPendSVHandler_PendSVentry(void) {
 TEST_GROUP(PortPendSVHandler);
 
 TEST_SETUP(PortPendSVHandler) {
+    xTaskOneStack = unity_malloc(sizeof(StackType_t) * TEST_STACK_SIZE);
+    xTaskTwoStack = unity_malloc(sizeof(StackType_t) * TEST_STACK_SIZE);
     const TaskParameters_t xTaskOneParams = {
         .pvTaskCode = vTaskFunction_AOne,
         .pcName = "A-one",
@@ -130,11 +134,50 @@ TEST_TEAR_DOWN(PortPendSVHandler) {
     pxCurrentTCB = NULL;
     taskAOneHandle = NULL;
     taskATwoHandle = NULL;
+    unity_free(xTaskOneStack);
+    unity_free(xTaskTwoStack);
+    xTaskOneStack = NULL;
+    xTaskTwoStack = NULL;
 }
 
-TEST( PortPendSVHandler , cs_with_fp )
-{
-    // TODO
+TEST( PortPendSVHandler , cs_with_fp ) {
+    TaskStatus_t taskInfo = {0};
+    // assume task A-one is the currently running in RTOS.
+    vTaskSwitchContext();
+    TEST_ASSERT_EQUAL_PTR(pxCurrentTCB, (void *) taskAOneHandle);
+    
+    float expect_fp_vals[15] = {
+        10.5f, 11.75f, 12.5f, 13.75f, 14.25f, 15.5f, 16.75f,
+        17.0f, 18.5f, 19.25f, 20.5f, 21.0f, 22.25f, 23.5f, 24.75f,
+    };
+    float actual_fp_vals[8] = {0};
+    __asm volatile (
+        "push  {r0} \n"
+        "mov   r0, %[addr]   \n"
+        "vldmia r0!, {s10-s24} \n" // read floats into s10..s24
+        "pop   {r0} \n"
+        :: [addr] "r" (expect_fp_vals)
+        : "r0", "memory"
+    );
+    size_t num_stack_preserved = NUM_BASIC_FRAMES + NUM_EXT_FP_FRAMES;
+    StackType_t *TaskOneStackPtr = &xTaskOneStack[TEST_STACK_SIZE - num_stack_preserved];
+    vSwitchFromMSP2PSP(TaskOneStackPtr); // mock task A-one execution using SP_process
+    vMockTaskYield();
+    vSwitchFromPSP2MSP(); // recover
+    // FIXME, expect_fp_vals[0] is modified unexpectedly after switching back
+    
+    TEST_ASSERT_EQUAL_UINT16( otherFuncsReached, 0x3 );
+
+    TEST_ASSERT_EQUAL_PTR(pxCurrentTCB, (void *) taskAOneHandle);
+    vTaskGetInfo(taskAOneHandle, &taskInfo, pdFALSE, eInvalid);
+    TEST_ASSERT_EQUAL_UINT32(taskInfo.eCurrentState, eRunning);
+    __asm volatile (
+        "vstmia %0, {s11-s19}"
+        :
+        : "r" (actual_fp_vals)
+        : "memory"
+    );
+    TEST_ASSERT_EQUAL_FLOAT_ARRAY(&expect_fp_vals[1], actual_fp_vals, 8);
 } // end of test body
 
 
@@ -149,7 +192,7 @@ TEST(PortPendSVHandler, cs_without_fp) {
     vTaskGetInfo(taskATwoHandle, &taskInfo, pdFALSE, eInvalid);
     TEST_ASSERT_EQUAL_UINT32(taskInfo.eCurrentState, eReady);
     
-    size_t num_stack_preserved = 10;
+    size_t num_stack_preserved = NUM_BASIC_FRAMES;
     StackType_t *TaskOneStackPtr = &xTaskOneStack[TEST_STACK_SIZE - num_stack_preserved];
     vSwitchFromMSP2PSP(TaskOneStackPtr); // mock task A-one execution using SP_process
     vMockTaskYield();

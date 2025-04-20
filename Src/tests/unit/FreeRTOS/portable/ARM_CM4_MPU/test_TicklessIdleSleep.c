@@ -137,8 +137,8 @@ TEST( TicklessSleepBareMetal , ok ) {
             "isb      \n"
             :::"memory"
         );
-        // TIM3 SR.UiF bit should be set
+        // TIM3 SR.UiF bit should be reset in TIM3_IRQHandler 
         uint32_t interrupt_raised = __HAL_TIM_GET_FLAG(&htim3, TIM_FLAG_UPDATE);
-        configASSERT(interrupt_raised == TIM_FLAG_UPDATE);
+        configASSERT(interrupt_raised == 0);
     }
 } // end of test body

@@ -69,14 +69,19 @@ Src/drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim.c \
 Src/drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim_ex.c \
 Src/drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc.c \
 Src/drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_rcc_ex.c \
+Src/drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dac.c \
+Src/drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_adc.c \
 Src/drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_flash.c \
 Src/drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_flash_ex.c \
 Src/drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_flash_ramfunc.c \
 Src/drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_gpio.c \
+Src/drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_i2c.c \
 Src/drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dma_ex.c \
 Src/drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_dma.c \
 Src/drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pwr.c \
 Src/drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_pwr_ex.c \
+Src/drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_spi.c \
+Src/drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_uart.c \
 Src/drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_cortex.c \
 Src/drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal.c
 
@@ -94,7 +99,6 @@ Src/os/FreeRTOS/v10.2.0/timers.c
 APPCFG_C_SOURCES = \
 Src/tests/hardware/stm32f4xx/stm32f4xx_it.c \
 Src/tests/hardware/stm32f4xx/stm32f4xx_hal_msp.c \
-Src/tests/hardware/stm32f4xx/stm32f4xx_hal_timebase_tim.c \
 Src/tests/hardware/stm32f4xx/stm32f4xx_hal_config.c \
 Src/tests/hardware/stm32f4xx/system_stm32f4xx.c
  
@@ -116,10 +120,14 @@ Src/tests/unit/FreeRTOS/portable/ARM_CM4_MPU/test_vPortEnterCritical.c   \
 Src/tests/unit/FreeRTOS/portable/ARM_CM4_MPU/test_vPortStoreTaskMPUSettings.c  \
 Src/tests/unit/FreeRTOS/portable/ARM_CM4_MPU/test_vPortSysTickHandler.c  \
 Src/tests/unit/FreeRTOS/portable/ARM_CM4_MPU/test_TicklessIdleSleep.c \
+Src/tests/unit/baremetal/stm32f4xx/test_AnalogDigitalCvt.c \
+Src/tests/unit/baremetal/stm32f4xx/test_UART.c \
+Src/tests/unit/baremetal/stm32f4xx/test_SPI.c \
+Src/tests/unit/baremetal/stm32f4xx/test_I2C.c \
 Src/tests/unit/Unity/src/unity.c \
 Src/tests/unit/Unity/extras/fixture/src/unity_fixture.c \
 Src/tests/unit/FreeRTOS/test_runner.c \
-Src/tests/unit/test_entry.c
+Src/tests/unit/FreeRTOS/entry.10.2.c
 
 
 ITEST_C_SOURCES = \
