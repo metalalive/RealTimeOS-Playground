@@ -152,16 +152,17 @@ define report_mpu_region
     x/3xw 0xe000ed98
 end
 
-file    build/stm32_port_freertos_v10.2-utest.elf
+file    build/stm32-freertos-v10-itest.elf
 target  remote localhost:3333
 monitor  reset
 monitor  halt
 load
 break   TestEnd
 
-
-break  Src/tests/unit/baremetal/stm32f4xx/test_I2C.c:154
-break  I2C_ITError
+# watch  *0xe000e010
+# break  Src/tests/unit/FreeRTOS/portable/ARM_CM4_MPU/test_vPortPendSVHandler.c:162
+# break  Src/tests/unit/baremetal/stm32f4xx/test_I2C.c:154
+# break  I2C_ITError
 
 # stm32f4_breakpoint_setup
 info breakpoints

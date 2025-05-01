@@ -1,0 +1,90 @@
+---------------- Help Documentation -----------------
+  
+Options for building image, running, and debugging
+  
+----------------------------------
+---- Project Directory Layout ----
+----------------------------------
+
+```
+├── Makefile ← top-level, invokes build.mk
+├── build.mk ← common rules & variables
+├── Inc/
+│ └── build-cfg/
+│ ├── mk/
+│ │ ├── hw/ ← per-hardware .mk files
+│ │ ├── os/ ← per-OS .mk files
+│ │ └── toolchain/ ← toolchain definitions
+└── <your app tree> ← pointed to by APPCFG_PATH
+
+```
+
+The `Inc/build-cfg/mk/` folder contains hardware, OS, and toolchain
+configuration snippets that top-level `build.mk` will include.
+
+------------------------------
+---- Key Build Parameters ----
+------------------------------
+
+The build command `make startbuild` relies on following parameters,
+please pass them along with your make command line:
+
+- HW_PLATFORM (required)
+  - selects the hardware config file: `./Inc/build-cfg/mk/hw/$(HW_PLATFORM).mk`
+  - supported values: stm32f446,
+  - usage: `make startbuild HW_PLATFORM=stm32f446 ...`
+
+- OS  (required)
+  - selects config for real-time OS : `./Inc/build-cfg/mk/os/$(OS).mk`
+  - supported values: freertos-v10,
+  - usage: `make startbuild OS=freertos-v10 ...`
+
+- APPCFG_PATH (required)
+  - path to your application’s top-level `build.mk`
+  - must contain a `build.mk` that defines `APP_C_SOURCES`, `APPCFG_C_INCLUDES`, etc.
+  - usage: `make startbuild APPCFG_PATH=/HOME/TO/MY/MYAPP ...`
+
+- TOOLCHAIN_BASEPATH  (required)
+  - path to cross-compile toolchain you use 
+  - usage: `make startbuild TOOLCHAIN_BASEPATH=/PATH/TO/GCC/INSTALLED ...`  
+
+- APP_NAME
+  - name of the successfully built image, defaults to `app` 
+  - usage: `make startbuild  APP_NAME=my-app-rdy2run ...`
+
+- DEBUG
+  - turn on (= 1) debug symbols or off (= 0 or omit)
+
+Example build commands,  In a single command, e.g.
+```
+make startbuild \
+    HW_PLATFORM=stm32f446  OS=freertos-v10   DEBUG=1 \
+    APPCFG_PATH=/path/to/your/app/demo  APP_NAME=helloworld  \
+    TOOLCHAIN_BASEPATH=/PATH/TO/GCC/INSTALLED
+```
+
+
+All outputs go under the build directory (default: `build/`):
+- build/$(APP_NAME).elf – linked ELF binary
+- build/$(APP_NAME).hex – Intel HEX file
+- build/$(APP_NAME).bin – raw binary
+- build/$(APP_NAME).text – human‐readable dump
+
+
+---------------------------------
+---- Other available targets ----
+---------------------------------
+
+* make dbg_server
+  - launch debug server for client debugger to connect, I use OpenOCD here.
+  
+* make dbg_client  TOOLCHAIN_BASEPATH=/PATH/TO/GCC/INSTALLED
+  - launch debugger client to load image, set breakpoints,  watchpoints for execution. 
+  - debugger depends on CPU vendor / architecture
+
+* make clean  
+  clean up all the built images
+
+* make help
+  show this helper document
+
