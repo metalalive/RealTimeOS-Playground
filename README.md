@@ -1,91 +1,83 @@
-# FreeRTOS-STM32-HAL-integration
+# Real-Time OS Playground
+This repository is for integration experiment with variety of hardware platforms and real-time operating systems
 
-STM32CubeMX hasn't supported up-to-date version of FreeRTOS by the time I created this project, therefore I decided to get my hands dirty to work on my FreeRTOS port for STM32F4 Nucleo, which is the development board I worked with in this port.
+### Supported platforms
+|device|CPU|RTOS|
+|------|---|----|
+|STM32F446RE Nucleo|ARM Cortex-M4|[FreeRTOS v10.2.0](https://github.com/FreeRTOS/FreeRTOS-Kernel/tree/V10.2.0)|
 
-### Working environment
-* STM32F446RE Nucleo development board, 
-  * which includes ARM Cortex-M4 MCU, and useful onboard debugger.
+## Build
+### Prerequisite
+|name|version|description|
+|----|-------|-----------|
+|[ARM GNU toolchain](https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads)| 14.2 release 1 |for cross-compiling and debugging ARM CPU dev board|
+|[OpenOCD](https://openocd.org/)| 0.12.0 |local server for debugging target dev board|
 
-* FreeRTOS v10.2
+### Optional Dependencies
+|name|version|description|
+|----|-------|-----------|
+|[ST-Link Tool](https://www.st.com/en/development-tools/stsw-link004.html)| 1.8.0 |flashing tools for STM32 dev boards|
 
-* C Unity
-  * testing framework written in C, in this project I made modification to Unity for both of unit testing & integration testing.
+### Key Build Parameters
+Build your application with the command `make startbuild`, that requires the following parameters:
 
-* GCC toolchain
-  * `arm-none-eabi-gcc` v5.4.1 20160919 (release), download the package from [here]
+##### `HW_PLATFORM` (required)
+- Selects the hardware config file `./Inc/build-cfg/mk/hw/$(HW_PLATFORM).mk`.
+- Supported values include `stm32f446`.
 
-* OpenOCD
-  * `openocd` v0.10.0, Building openOCD from source is highly recommended.
+##### `OS` (required)
+- Selects the config for the real-time OS `./Inc/build-cfg/mk/os/$(OS).mk`.
+- Supported values include `freertos-v10`.
 
-* GDB
-  * `gdb-multiarch` v7.7.1.
+##### `APPCFG_PATH` (required)
+- Path to your application's top-level `build.mk`.
+- This file must define `APP_C_SOURCES`, `APPCFG_C_INCLUDES`, etc.
 
+##### `TOOLCHAIN_BASEPATH` (required)
+Path to the cross-compile toolchain you use.
 
+##### `APP_NAME`
+Name of the successfully built image, defaults to `app`.
 
-### Quick Start
+##### `DEBUG`
+Set to `1` to turn on debug symbols, or `0` (or omit) to turn them off.
 
- Options for building, running, and debugging the image
-
- * ```make  UNIT_TEST=yes```
-   * Build image to run unit tests.
-
- * ```make  INTEGRATION_TEST=yes```
-   * Build image to run integration tests.
-
- * ```make clean```
-   * clean up the built image
-
- * ```make dbg_server  OPENOCD_HOME=/PATH/TO/YOUR_OPENOCD```
-   * launch debug server, we use OpenOCD (v0.10.0) here . 
-   * Note that superuser permission would be required when running openOCD, the superuser command differs & depends on your working Operating System. 
-
- * ```make dbg_client```
-   * Before starting GDB client, please open `./test_utility.gdb` and modify the image path in your case, by going to line 73, modify `file <YOUR_PATH_TO_TEST_IMAGE>` .
-   * Launch GDB client to load image, set breakpoints, watchpoints for execution. We use gdb-multiarch   (v7.7.1 or later) at here. 
-
-
-### Test Report
-To see the test result, type command `report_test_result` in the GDB client console, you can see number of test cases running on the target board, and how many of them failed. 
-
-For example, the text report below shows that we have 36 test cases and none of the tests failed.
-```
-$1 = "------- start of error report -------"
-$2 = "------- end of error report -------"
-$3 = ""
-$4 = "[number of tests]:"
-$5 = 36
-$6 = "[number of failure]:"
-$7 = 0
+#### Example Build Command
+```bash
+make startbuild \
+    HW_PLATFORM=stm32f446  OS=freertos-v10   DEBUG=1 \
+    APPCFG_PATH=$PWD/examples/src/integration/FreeRTOS/  APP_NAME=helloworld  \
+    TOOLCHAIN_BASEPATH=/PATH/TO/GCC/INSTALLED
 ```
 
-If you get some tests failed, the report also shows where did the assertion failure happen. In the case below, there is one assertion failure at line 28 of the file `sw_timer.c`, the expected value is stored in RAM address `0x200058e0`, similarly the actual value is stored in RAM address `0x200058f8`, the data type of the expected/actual value depends on what you'd like to check with the test assertion function.
-```
-$8 = "------- start of error report -------"
-$9 = "[file path]: "
-$10 = 0x8009848 "Src/tests/integration/FreeRTOS/sw_timer.c"
-$11 = "[line number]: "
-$12 = 28
-$13 = "[description]: "
-$14 = 0x8009834 "software timer test"
-$15 = "[expected value]: (represented as pointer) "
-$16 = 0x200058e0
-$17 = "[actual value]: (represented as pointer) "
-$18 = 0x200058f8
-$19 = ""
-$20 = "------- end of error report -------"
-$21 = ""
-$22 = "[number of tests]:"
-$23 = 36
-$24 = "[number of failure]:"
-$25 = 1
+All outputs are placed under the build directory (default: `build/`) and include:
+
+- `build/$(APP_NAME).elf` , linked ELF binary
+- `build/$(APP_NAME).hex` , Intel HEX file
+- `build/$(APP_NAME).bin` , raw binary
+- `build/$(APP_NAME).text` , human-readable dump
+
+
+## Other Available Commands
+Clean up all built images
+```bash
+make clean
 ```
 
+Launches a debug server for a client debugger to connect. OpenOCD is used here.   
+```bash
+make dbg_server
+```
 
-### Code Structure
+Launches the debugger client to load the image, set breakpoints, and watchpoints for execution. The debugger depends on the CPU vendor/architecture.  
+```bash
+make dbg_client TOOLCHAIN_BASEPATH=/PATH/TO/GCC/INSTALLED
+```
+- The debugger to use depends on your target board
+- You can modify path to the image, breakpoints, and watchpoints ... etc. in `./test_utility.gdb` based on your requirement.
 
-* `./Driver` : contains STM32 HAL C API functions.
-
-* `./Inc`, `./Src` : where FreeRTOS code, testing code are located
-
-
+Shows this helper document
+```bash
+make help
+```
 
