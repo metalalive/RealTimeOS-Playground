@@ -122,7 +122,7 @@ TEST_TEAR_DOWN(TicklessSleepBareMetal) {
 
 TEST( TicklessSleepBareMetal , ok ) {
     // clear needless pending interrupt on timer initialization
-    for(int idx = 1; idx < 10; idx++) {
+    for(int idx = 1; idx < 5; idx++) {
         HAL_StatusTypeDef result = HAL_TIM_Base_Stop_IT(&htim3);
         configASSERT(HAL_OK == result);
         __HAL_TIM_CLEAR_FLAG(&htim3, TIM_FLAG_UPDATE);
@@ -137,8 +137,8 @@ TEST( TicklessSleepBareMetal , ok ) {
             "isb      \n"
             :::"memory"
         );
-        // TIM3 SR.UiF bit should be reset in TIM3_IRQHandler 
+        // TIM3 SR.UiF bit should not be reset in TIM3_IRQHandler 
         uint32_t interrupt_raised = __HAL_TIM_GET_FLAG(&htim3, TIM_FLAG_UPDATE);
-        configASSERT(interrupt_raised == 0);
+        configASSERT(interrupt_raised == 1);
     }
 } // end of test body

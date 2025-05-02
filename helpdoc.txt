@@ -59,7 +59,8 @@ Example build commands,  In a single command, e.g.
 ```
 make startbuild \
     HW_PLATFORM=stm32f446  OS=freertos-v10   DEBUG=1 \
-    APPCFG_PATH=/path/to/your/app/demo  APP_NAME=helloworld  \
+    APPCFG_PATH=$PWD/examples/src/integration/FreeRTOS/ \
+    APP_NAME=helloworld  \
     TOOLCHAIN_BASEPATH=/PATH/TO/GCC/INSTALLED
 ```
 

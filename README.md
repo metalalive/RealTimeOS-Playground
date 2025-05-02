@@ -18,67 +18,66 @@ This repository is for integration experiment with variety of hardware platforms
 |----|-------|-----------|
 |[ST-Link Tool](https://www.st.com/en/development-tools/stsw-link004.html)| 1.8.0 |flashing tools for STM32 dev boards|
 
+### Key Build Parameters
+Build your application with the command `make startbuild`, that requires the following parameters:
 
-Build test image. The commands below should include base path to toolchain e.g. `ARM_TOOLCHAIN_BASEPATH=/PATH/TO/TOOLCHAIN` depending on your target board.
+##### `HW_PLATFORM` (required)
+- Selects the hardware config file `./Inc/build-cfg/mk/hw/$(HW_PLATFORM).mk`.
+- Supported values include `stm32f446`.
+
+##### `OS` (required)
+- Selects the config for the real-time OS `./Inc/build-cfg/mk/os/$(OS).mk`.
+- Supported values include `freertos-v10`.
+
+##### `APPCFG_PATH` (required)
+- Path to your application's top-level `build.mk`.
+- This file must define `APP_C_SOURCES`, `APPCFG_C_INCLUDES`, etc.
+
+##### `TOOLCHAIN_BASEPATH` (required)
+Path to the cross-compile toolchain you use.
+
+##### `APP_NAME`
+Name of the successfully built image, defaults to `app`.
+
+##### `DEBUG`
+Set to `1` to turn on debug symbols, or `0` (or omit) to turn them off.
+
+#### Example Build Command
 ```bash
-make UNIT_TEST=yes ;
-make INTEGRATION_TEST=yes ;
+make startbuild \
+    HW_PLATFORM=stm32f446  OS=freertos-v10   DEBUG=1 \
+    APPCFG_PATH=$PWD/examples/src/integration/FreeRTOS/  APP_NAME=helloworld  \
+    TOOLCHAIN_BASEPATH=/PATH/TO/GCC/INSTALLED
 ```
 
+All outputs are placed under the build directory (default: `build/`) and include:
+
+- `build/$(APP_NAME).elf` , linked ELF binary
+- `build/$(APP_NAME).hex` , Intel HEX file
+- `build/$(APP_NAME).bin` , raw binary
+- `build/$(APP_NAME).text` , human-readable dump
+
+
+## Other Available Commands
 Clean up all built images
 ```bash
 make clean
 ```
 
-## Load image, Run, and Debug
-Launch debug server after interfacing debug hardware to your target board
+Launches a debug server for a client debugger to connect. OpenOCD is used here.   
 ```bash
 make dbg_server
 ```
 
-Launch debug client
+Launches the debugger client to load the image, set breakpoints, and watchpoints for execution. The debugger depends on the CPU vendor/architecture.  
 ```bash
-make dbg_client ARM_TOOLCHAIN_BASEPATH=/PATH/TO/TOOLCAHIN
+make dbg_client TOOLCHAIN_BASEPATH=/PATH/TO/GCC/INSTALLED
 ```
-- Remind the debugger to use depends on your target board
-- Note you can open `./test_utility.gdb` and modify the image name and path in your case, by modifying the command `file <YOUR_PATH_TO_TEST_IMAGE>` , also set up extra breakpoints for your requirement.
+- The debugger to use depends on your target board
+- You can modify path to the image, breakpoints, and watchpoints ... etc. in `./test_utility.gdb` based on your requirement.
 
-
-### Test Result Check
-To see the unit-test result, type command `report_test_result` in the GDB client console, you can see number of test cases running on the target board, and how many of them failed. 
-
-For example, the text report below shows that we have 36 test cases and none of the tests failed.
+Shows this helper document
+```bash
+make help
 ```
-$1 = "------- start of error report -------"
-$2 = "------- end of error report -------"
-$3 = ""
-$4 = "[number of tests]:"
-$5 = 36
-$6 = "[number of failure]:"
-$7 = 0
-```
-
-If you get some tests failed, the report also shows where did the assertion failure happen. In the case below, there is one assertion failure at line 28 of the file `sw_timer.c`, the expected value is stored in RAM address `0x200058e0`, similarly the actual value is stored in RAM address `0x200058f8`, the data type of the expected/actual value depends on what you'd like to check with the test assertion function.
-```
-$8 = "------- start of error report -------"
-$9 = "[file path]: "
-$10 = 0x8009848 "Src/tests/integration/FreeRTOS/sw_timer.c"
-$11 = "[line number]: "
-$12 = 28
-$13 = "[description]: "
-$14 = 0x8009834 "software timer test"
-$15 = "[expected value]: (represented as pointer) "
-$16 = 0x200058e0
-$17 = "[actual value]: (represented as pointer) "
-$18 = 0x200058f8
-$19 = ""
-$20 = "------- end of error report -------"
-$21 = ""
-$22 = "[number of tests]:"
-$23 = 36
-$24 = "[number of failure]:"
-$25 = 1
-```
-
-For integration test, you can interupt (by pressing keys `Ctrl + C`) at any time to see whether any task has been hitting assertion failure.
 
