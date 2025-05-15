@@ -1,8 +1,8 @@
 
-APP_NAME =? app
-BUILD_DIR =? build
+APP_NAME ?= app
+BUILD_DIR ?= build
 # debug build?
-DEBUG =? 1
+DEBUG ?= 1
 
 # Allow selecting a hardware-specific config file via
 # HW_PLATFORM (no extension) e.g. make HW_PLATFORM=stm32f446
@@ -11,6 +11,11 @@ include ./Inc/build-cfg/mk/hw/$(HW_PLATFORM).mk
 else
 $(error HW_PLATFORM is not set! Use e.g. make HW_PLATFORM=stm32f446)
 endif
+
+$(info HW_PLATFORM is: $(HW_PLATFORM))
+$(info HW_CPU is: $(HW_CPU))
+$(info OS is: $(OS))
+$(info BUILD_DIR is: $(BUILD_DIR))
 
 ifdef OS
 include ./Inc/build-cfg/mk/os/$(OS).mk

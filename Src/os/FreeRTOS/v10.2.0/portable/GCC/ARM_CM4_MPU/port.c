@@ -456,7 +456,7 @@ PRIVILEGED_FUNCTION void vPortSVCHandler(UBaseType_t *pulSelectedSP) {
             break;
         }
         case portSVC_ID_YIELD:
-            __asm volatile ("b vPortYield  \n");
+            vPortYield();
             break;
         case portSVC_ID_RAISE_PRIVILEGE:
             prvRaisePrivilege();

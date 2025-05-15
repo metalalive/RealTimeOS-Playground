@@ -23,7 +23,9 @@ TOOLCHAIN_INCLUDES = \
 
 GNU_CMD_PREFIX = arm-none-eabi-
 
+DBG_CUSTOM_SCRIPT_PATH = ./test_utility.gdb
+
 dbg_client:
 	## @gdb-multiarch -x ./test_utility.gdb
-	@$(GNU_CMD_PREFIX)gdb -x ./test_utility.gdb
+	@$(GNU_CMD_PREFIX)gdb -x $(DBG_CUSTOM_SCRIPT_PATH)
 
