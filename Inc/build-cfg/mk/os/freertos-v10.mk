@@ -9,12 +9,12 @@ OS_C_SOURCES = \
   Src/os/FreeRTOS/v10.2.0/tasks.c         \
   Src/os/FreeRTOS/v10.2.0/timers.c
 
-OS_C_INCLUDES = Src/os/FreeRTOS/v10.2.0/include
+OS_C_INCLUDES = $(RTOS_HW_BUILD_PATH)/Src/os/FreeRTOS/v10.2.0/include
 
 ifeq ($(HW_CPU), arm-cortex-m4)
 
 OS_C_SOURCES += Src/os/FreeRTOS/v10.2.0/portable/GCC/ARM_CM4_MPU/port.c
-OS_C_INCLUDES += Src/os/FreeRTOS/v10.2.0/portable/GCC/ARM_CM4_MPU
+OS_C_INCLUDES += $(RTOS_HW_BUILD_PATH)/Src/os/FreeRTOS/v10.2.0/portable/GCC/ARM_CM4_MPU
 
 else
 

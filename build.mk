@@ -1,8 +1,8 @@
 
 APP_NAME ?= app
 BUILD_DIR ?= build
-# debug build?
 DEBUG ?= 1
+RTOS_HW_BUILD_PATH = $(shell pwd)
 
 # Allow selecting a hardware-specific config file via
 # HW_PLATFORM (no extension) e.g. make HW_PLATFORM=stm32f446
@@ -121,10 +121,17 @@ vpath %.s $(dir $(ASM_SOURCES))
 OBJS4APP = $(addprefix $(BUILD_DIR)/, $(APPCFG_C_SOURCES:.c=.o))
 vpath %.c $(sort $(dir $(APPCFG_C_SOURCES)))
 
+LIB_DIRS := $(dir $(APPCFG_LIBS_PATHS))
+LIB_FILES := $(notdir $(APPCFG_LIBS_PATHS))
+LIB_NAMES := $(patsubst lib%,%, $(basename $(LIB_FILES)))
+LIBS4APP := \
+    $(foreach idx,$(shell seq 1 $(words $(LIB_DIRS))), \
+        -L$(word $(idx),$(LIB_DIRS)) -l$(word $(idx),$(LIB_NAMES)) \
+    )
 
 $(BUILD_DIR)/%.o: %.c Makefile | $(BUILD_DIR)
 	mkdir -p $(dir $@)
-	$(CC) -c $(CFLAGS) -Wa,-a,-ad,-alms=$(BUILD_DIR)/$(notdir $(<:.c=.lst)) $< -o $@
+	$(CC) -c $(CFLAGS) -Wa,-a,-ad,-alms=$(BUILD_DIR)/$(<:.c=.lst) $< -o $@
 
 $(BUILD_DIR)/%.o: %.s Makefile | $(BUILD_DIR)
 	mkdir -p $(dir $@)
@@ -140,8 +147,8 @@ $(BUILD_DIR)/%.o: %.s Makefile | $(BUILD_DIR)
 # Be sure re-declared functions in application code can overwrite the
 # weak functions in `C_SOURCES` and `ASM_SOURCES`
 
-$(BUILD_DIR)/$(APP_NAME).elf: $(OBJS4APP) $(OBJS4LIB)
-	$(CC) $(LDFLAGS) $^ -o $@
+$(BUILD_DIR)/$(APP_NAME).elf: $(APPCFG_LIBS_PATHS) $(OBJS4APP) $(OBJS4LIB)
+	$(CC) $(LDFLAGS)  $(OBJS4APP) $(OBJS4LIB) $(LIBS4APP) -o $@
 	$(SZ) $@
 
 startbuild: $(BUILD_DIR)/$(APP_NAME).text

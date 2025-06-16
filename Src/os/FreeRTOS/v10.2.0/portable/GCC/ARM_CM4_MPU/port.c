@@ -130,30 +130,6 @@ void vPortYield(void) {
     __asm volatile( "isb" );
 }
 
-void  vPortSetBASEPRI(UBaseType_t ulNewMaskValue) {
-    __set_BASEPRI( ulNewMaskValue );
-}
-
-void  vPortRaiseBASEPRI( void )
-{ // let compiler decide which registers to use
-    __set_BASEPRI( configMAX_SYSCALL_INTERRUPT_PRIORITY );
-    __asm volatile(
-        "isb               \n"
-        "dsb               \n"
-    );
-}
-
-UBaseType_t ulPortRaiseBASEPRI( void )
-{ // let compiler decide which registers to use
-    UBaseType_t ulOriginBasepri = __get_BASEPRI();
-    __set_BASEPRI( configMAX_SYSCALL_INTERRUPT_PRIORITY );
-    __asm volatile(
-        "isb    \n"
-        "dsb    \n"
-    );
-    return  ulOriginBasepri;
-}
-
 UBaseType_t  prvMPUregionSizeEncode(UBaseType_t ulSizeInBytes) {
     UBaseType_t  MPU_RASR_size  = 4; // 2**(4+1)
     UBaseType_t  ulSize         = (ulSizeInBytes - 1) >> 5;
