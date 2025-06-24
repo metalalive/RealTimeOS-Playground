@@ -1,4 +1,4 @@
-TOOLCHAIN_BASEPATH = /PATH/TO/YOUR_TOOLCHAIN
+TOOLCHAIN_BASEPATH ?= /PATH/TO/YOUR_TOOLCHAIN
 
 #######################################
 # paths
