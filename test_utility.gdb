@@ -106,6 +106,14 @@ target  remote localhost:3333
 monitor  reset
 monitor  halt
 load
+
+# following parameters will be referred in FreeRTOS utility GDB script
+set $config_use_posix_errno_enabled = 0
+set $cfg_max_priority = 7
+set $platform_mem_baseaddr = 0x20000000
+set $platform_mem_maxsize = 0x1ffff
+source ./Src/os/FreeRTOS/util.gdb
+
 break   TestEnd
 
 # watch  *0xe000e010

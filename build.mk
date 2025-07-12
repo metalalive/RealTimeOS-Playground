@@ -51,7 +51,7 @@ BIN = $(CP) -O binary -S
 ######################################
 AS_DEFS = 
 
-C_DEFS = $(HW_C_DEFS) $(OS_C_DEFS)
+C_DEFS = $(HW_C_DEFS) $(OS_C_DEFS) $(addprefix -D, $(APPCFG_C_DEFS))
 
 ######################################
 # sources
