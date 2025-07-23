@@ -28,3 +28,5 @@ ITEST_C_INCLUDES = examples/include/integration/FreeRTOS
 
 APPCFG_C_INCLUDES = $(APP_COMMON_C_INCLUDES)  $(ITEST_C_INCLUDES)
 
+APPCFG_C_DEFS = 
+

@@ -27,3 +27,7 @@ Note :
 - In SPI loopback test, SPI1 is configured as master, SPI2 as slave, with full-duplex mode enabled
 - In I2C loopback test, either I2C1 or I2C3 can act as master which is programmable by software.
 
+Wiring detail for loopback test is shown in the schematic diagram below :
+
+![schematic diagram with STM32F446](./stm32f446-itest-hw-baremetal.svg)
+

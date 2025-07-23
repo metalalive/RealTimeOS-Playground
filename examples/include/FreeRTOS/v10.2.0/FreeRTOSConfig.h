@@ -122,8 +122,10 @@
 #define configCHECK_FOR_STACK_OVERFLOW           1
 #define configENABLE_MPU                         0 // TODO, enable MPU test
 
-// for unit-test , TODO, separate config files for different apps
+// debug helpers for test , TODO, separate config files for different apps
 #define configUSE_TRACE_FACILITY                 1
+#define configUSE_POSIX_ERRNO                    1
+#define configRECORD_STACK_HIGH_ADDRESS          1
 
 /* Co-routine definitions. */
 #define configUSE_CO_ROUTINES                    0

@@ -1,4 +1,4 @@
-include ./Inc/build-cfg/mk/toolchain/gcc-arm.mk
+include $(RTOS_HW_BUILD_PATH)/Inc/build-cfg/mk/toolchain/gcc-arm.mk
 
 CPU = -march=armv7e-m+fp  -mcpu=cortex-m4
 
